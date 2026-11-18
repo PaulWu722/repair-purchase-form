@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>修繕器材採購申請單</title>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box}
@@ -62,6 +63,12 @@ async function upload(blob,ext){
 }
 const ext=n=>(n.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
 
+// HEIC/HEIF 瀏覽器讀不了，先轉成 JPEG
+async function fromHeic(f){
+  if(!/\.(heic|heif)$/i.test(f.name)&&!/hei[cf]/i.test(f.type))return f;
+  const b=await heic2any({blob:f,toType:'image/jpeg',quality:.9});
+  return new File([Array.isArray(b)?b[0]:b],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+}
 // 把上傳的 PDF 第一頁轉成圖片；圖片原樣回傳
 async function toImageBlob(file){
   if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name))return file;
@@ -129,14 +136,14 @@ function create(){
     if(mode==='fill')$('#pv').innerHTML=paper({edit:true});
     if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,bg:window.URL.createObjectURL(bgFile.prev)});
     if($('#bg'))$('#bg').onchange=async e=>{if(!e.target.files[0])return;$('#err').textContent='處理中…';
-      try{bgFile={src:e.target.files[0],prev:await toImageBlob(e.target.files[0])};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
+      try{const f=await fromHeic(e.target.files[0]);bgFile={src:f,prev:await toImageBlob(f)};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
     $('#est').onchange=e=>{estFiles=[...estFiles,...e.target.files];$('#el').textContent=estFiles.map(f=>f.name).join('、')};
     $('#go').onclick=async()=>{
       const b=$('#go');b.disabled=true;$('#err').textContent='上傳中…';
       try{
         if(mode==='upload'&&!bgFile)throw Error('請先上傳申請單');
         const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
-        const files=[];for(const f of estFiles)files.push({name:f.name,url:await upload(f,ext(f.name))});
+        const files=[];for(const o of estFiles){const f=await fromHeic(o);files.push({name:f.name,url:await upload(f,ext(f.name))})}
         const id=await rpc('rp_create',{p_form:collect(),p_bg:bgUrl,p_files:files});
         location.search='?id='+id;
       }catch(x){$('#err').textContent=x.message;b.disabled=false}
