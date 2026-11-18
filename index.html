@@ -4,8 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>修繕器材採購申請單</title>
-<script src="https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:"Noto Sans TC","PingFang TC",sans-serif;background:#f1f1ee;color:#222}
@@ -109,11 +107,14 @@ async function upload(blob,ext){
 }
 const ext=n=>(n.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
 
+// 大型程式庫（heic-to 約 3MB）只在真的要轉檔時才載入，簽名人打開頁面不用等
+const libs={};
+const lib=(u,g)=>window[g]?Promise.resolve():libs[u]||(libs[u]=new Promise((ok,no)=>{const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=()=>{delete libs[u];no(Error('轉檔程式庫載入失敗，請檢查網路後重試'))};document.head.append(e)}));
 // HEIC/HEIF 瀏覽器讀不了，先轉成 JPEG
 async function fromHeic(f){
   if(!/\.(heic|heif)$/i.test(f.name)&&!/hei[cf]/i.test(f.type))return f;
   let b;
-  try{b=await HeicTo({blob:f,type:'image/jpeg',quality:.9})}
+  try{await lib('https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js','HeicTo');b=await HeicTo({blob:f,type:'image/jpeg',quality:.9})}
   catch(e){ // 程式庫不支援時，改用瀏覽器原生解碼（Safari 可）
     const im=await createImageBitmap(f),c=document.createElement('canvas');c.width=im.width;c.height=im.height;
     c.getContext('2d').drawImage(im,0,0);b=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));
@@ -123,6 +124,7 @@ async function fromHeic(f){
 // 把上傳的 PDF 第一頁轉成圖片；圖片原樣回傳
 async function toImageBlob(file){
   if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name))return file;
+  await lib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjsLib');
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const pg=await (await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise).getPage(1);
   const vp=pg.getViewport({scale:2}),c=document.createElement('canvas');
@@ -131,9 +133,9 @@ async function toImageBlob(file){
   return new Promise(r=>c.toBlob(r,'image/jpeg',.9));
 }
 
-const sigLayer=(sigs,hl)=>Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
+const sigLayer=(sigs,hl)=>Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${esc(sigs[r])}">`
   :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
-const wrap=(bg,inner)=>`<div class="paper" style="aspect-ratio:${F.W}/${F.H};--u:calc(100cqw/${F.W});--pw:${F.pw};--ph:${F.ph}">${bg?`<img class="bg" src="${bg}">`:''}${inner}</div>`;
+const wrap=(bg,inner)=>`<div class="paper" style="aspect-ratio:${F.W}/${F.H};--u:calc(100cqw/${F.W});--pw:${F.pw};--ph:${F.ph}">${bg?`<img class="bg" src="${esc(bg)}">`:''}${inner}</div>`;
 // opts: {edit, bg(url), form, sigs, hl(要顯示虛線框的身份)}
 const paper=o=>(F.kind==='huang'?huangPaper:repairPaper)(o||{});
 
@@ -197,7 +199,7 @@ function huangPaper({edit=false,bg='',form={},sigs={},hl=''}={}){
 }
 const collect=()=>{const f={_kind:F.kind};document.querySelectorAll('#app [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
 const isImg=u=>/\.(jpe?g|png|gif|webp)$/i.test(u);
-const estimates=files=>files.length?`<div class="card est"><b>${F.est.label}</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${f.url}" target="_blank">開新分頁</a></p>${isImg(f.url)?`<img src="${f.url}">`:`<iframe src="${f.url}"></iframe>`}`).join('')}</div>`:`<div class="card">（未附${F.est.label.replace(/（.*/,'')}）</div>`;
+const estimates=files=>files.length?`<div class="card est"><b>${F.est.label}</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${esc(f.url)}" target="_blank" rel="noopener">開新分頁</a></p>${isImg(f.url)?`<img src="${esc(f.url)}">`:`<iframe src="${esc(f.url)}"></iframe>`}`).join('')}</div>`:`<div class="card">（未附${F.est.label.replace(/（.*/,'')}）</div>`;
 
 // 簽名板：回傳 ()=>簽名圖(dataURL) 或 null
 function sigPad(c,clr){
@@ -226,7 +228,8 @@ function menu(){
 }
 /* ---------- 建立頁 ---------- */
 function create(){
-  let mode='fill',bgFile=null,estFiles=[],subj='',getSig=null;
+  let mode='fill',bgFile=null,estFiles=[],subj='',getSig=null,saved={};
+  const redraw=()=>{saved=collect();draw()};
   const draw=()=>{
     $('#app').innerHTML=`<p class="noprint"><a href="./">← 回選單</a></p><h1>${F.name}</h1>
     <div class="card"><div class="tabs">
@@ -241,13 +244,13 @@ function create(){
     <div class="card"><div class="row">${F.est.label}（PDF 或圖片，可多選）：<input type="file" id="est" accept="application/pdf,image/*" multiple></div>
       <div id="el">${estFiles.map(f=>esc(f.name)).join('、')}</div></div>
     <div class="card"><button id="go">建立並產生簽名連結</button> <span class="msg" id="err"></span></div>`;
-    $('#m1').onclick=()=>{mode='fill';draw()};$('#m2').onclick=()=>{mode='upload';draw()};
-    if(mode==='fill')$('#pv').innerHTML=paper({edit:true});
-    if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,bg:window.URL.createObjectURL(bgFile.prev)});
+    $('#m1').onclick=()=>{mode='fill';redraw()};$('#m2').onclick=()=>{mode='upload';redraw()};
+    if(mode==='fill')$('#pv').innerHTML=paper({edit:true,form:saved});
+    if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,form:saved,bg:window.URL.createObjectURL(bgFile.prev)});
     if(F.first)getSig=sigPad($('#pad1'),$('#clr1'));
     if($('#subj'))$('#subj').oninput=e=>subj=e.target.value;
     if($('#bg'))$('#bg').onchange=async e=>{if(!e.target.files[0])return;$('#err').textContent='處理中…';
-      try{const f=await fromHeic(e.target.files[0]);bgFile={src:f,prev:await toImageBlob(f)};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
+      try{const f=await fromHeic(e.target.files[0]);bgFile={src:f,prev:await toImageBlob(f)};$('#err').textContent='';redraw()}catch(x){$('#err').textContent=x.message}};
     $('#est').onchange=e=>{estFiles=[...estFiles,...e.target.files];$('#el').textContent=estFiles.map(f=>f.name).join('、')};
     $('#go').onclick=async()=>{
       const b=$('#go');b.disabled=true;$('#err').textContent='上傳中…';
@@ -275,7 +278,7 @@ function create(){
 
 /* ---------- 檢視／簽名頁 ---------- */
 async function view(){
-  const d=await rpc('rp_get',{p_id:id});
+  let d;try{d=await rpc('rp_get',{p_id:id})}catch(e){$('#app').innerHTML='<p class="msg">讀取失敗：連結可能有誤，或網路有問題。</p>';return}
   if(!d){$('#app').innerHTML='<p class="msg">找不到這份申請單</p>';return}
   setForm(d.form._kind);
   window.SUBJ=(d.form[F.title]||'').trim();
