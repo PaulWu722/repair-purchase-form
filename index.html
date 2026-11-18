@@ -12,18 +12,18 @@ body{margin:0;font-family:"Noto Sans TC","PingFang TC",sans-serif;background:#f1
 main{max-width:860px;margin:0 auto;padding:16px}
 h1{font-size:22px;margin:8px 0 12px}
 .card{background:#fff;border-radius:10px;padding:14px 16px;margin:12px 0;box-shadow:0 1px 3px #0002}
-button,.btn{font:inherit;padding:8px 16px;border:0;border-radius:8px;background:#2f6f4f;color:#fff;cursor:pointer}
+button,.btn{font:inherit;padding:8px 16px;border:0;border-radius:8px;background:#2b36ff;color:#fff;cursor:pointer}
 button.alt{background:#e4e4df;color:#222}
 button:disabled{opacity:.5}
-.menu{display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:700;padding:22px 20px;color:#222;text-decoration:none}.menu small{font-size:14px;font-weight:400;color:#2f6f4f}.menu.off{opacity:.55}.menu.off small{color:#888}
-.hero{background:linear-gradient(135deg,#2f6f4f,#4d8f6b);color:#fff;border-radius:14px;padding:22px 20px;margin:4px 0 12px}.hero h1{margin:2px 0 6px;font-size:28px}.hero p{font-weight:400;margin:0;line-height:1.6;opacity:.95}.hero small{opacity:.85}
-.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.steps div{flex:1;min-width:90px;background:#fff;border-radius:8px;padding:8px 6px;text-align:center;font-size:14px;box-shadow:0 1px 3px #0001}.steps b{color:#2f6f4f}
+.menu{display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:700;padding:22px 20px;color:#222;text-decoration:none}.menu small{font-size:14px;font-weight:400;color:#2b36ff}.menu.off{opacity:.55}.menu.off small{color:#888}
+.hero{background:linear-gradient(135deg,#2b36ff,#4d8f6b);color:#fff;border-radius:14px;padding:22px 20px;margin:4px 0 12px}.hero h1{margin:2px 0 6px;font-size:28px}.hero p{font-weight:400;margin:0;line-height:1.6;opacity:.95}.hero small{opacity:.85}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.steps div{flex:1;min-width:90px;background:#fff;border-radius:8px;padding:8px 6px;text-align:center;font-size:14px;box-shadow:0 1px 3px #0001}.steps b{color:#2b36ff}
 .menu .ic{font-size:34px;margin-right:14px}.menu .tx{flex:1;display:block}.menu em{display:block;font-style:normal;font-weight:400;font-size:14px;color:#666;margin-top:4px;line-height:1.5}.menu small{white-space:nowrap;margin-left:10px}.foot{color:#888;font-size:13px;text-align:center}
 a.menu:hover{box-shadow:0 3px 10px #0003}
 .tabs{display:flex;gap:8px;margin-bottom:10px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
 .row input[type=text]{flex:1;min-width:200px;font:inherit;padding:6px}
-.ok{color:#2f6f4f;font-weight:700}.wait{color:#b25b00}
+.ok{color:#2b36ff;font-weight:700}.wait{color:#b25b00}
 .msg{color:#b00020;white-space:pre-wrap}
 /* 申請單：以各表單自己的座標空間定位，元件用 % 與 --u(=100cqw/W) 縮放 */
 .paper{container-type:inline-size;position:relative;width:100%;aspect-ratio:920/1301;--u:calc(100cqw/920);--pw:210mm;--ph:297mm;background:#fff;box-shadow:0 1px 6px #0003;font-family:"Noto Serif TC","PMingLiU",serif}
@@ -42,7 +42,30 @@ a.menu:hover{box-shadow:0 3px 10px #0003}
 .pad{width:100%;max-width:600px;aspect-ratio:3/1;border:2px solid #999;border-radius:8px;background:#fff;touch-action:none;display:block}
 .est img{max-width:100%}.est iframe{width:100%;height:600px;border:1px solid #ccc}
 @media print{body{background:#fff}main{padding:0;max-width:none}.noprint{display:none!important}.paper{box-shadow:none;width:var(--pw);height:var(--ph);aspect-ratio:auto;page-break-after:always}}
+/* ---- 安靜紙張風格（Quiet paper）：暖灰紙底、紙白卡片、細字、單一群青重點色 ---- */
+body{font-family:"Geist","PingFang TC","Noto Sans TC",system-ui,sans-serif;background:#e7e5e0;color:#141416;font-size:15px;-webkit-font-smoothing:antialiased}
+h1{font-weight:300;letter-spacing:-.02em}h2{font-weight:400}
+a{color:#2b36ff}
+.card{background:#f8f7f4;border-radius:26px;box-shadow:0 0 0 1px rgba(20,20,22,.05),inset 0 1px 0 #fff,0 28px 46px -30px rgba(40,34,20,.35),0 2px 4px rgba(40,34,20,.04)}
+button,.btn{background:#141416;color:#f8f7f4;border-radius:99px;padding:9px 20px}
+button.alt{background:rgba(20,20,22,.07);color:#141416}
+.row input[type=text]{border:1px solid rgba(20,20,22,.12);border-radius:12px;background:#fff}
+.ok{color:#2b36ff}.wait{color:#8b887f;font-weight:400}
+.slot{border-color:#2b36ff;background:rgba(43,54,255,.08);color:#2b36ff}
+.hero{background:#f8f7f4;color:#141416;border-radius:26px;padding:30px 28px 26px;margin:6px 0 12px;box-shadow:0 0 0 1px rgba(20,20,22,.05),inset 0 1px 0 #fff,0 28px 46px -30px rgba(40,34,20,.35)}
+.hero h1{font-size:46px;font-weight:300;letter-spacing:-.04em;margin:10px 0 8px;line-height:1.1}
+.hero small{font:400 14px "Inter",system-ui,sans-serif;color:#8b887f;opacity:1;display:flex;align-items:center;gap:8px}
+.hero small::before{content:"";width:6px;height:6px;border-radius:50%;background:#2b36ff}
+.hero p{color:#8b887f;font-weight:400;opacity:1;max-width:36em}.hero p b{color:#141416;font-weight:400}
+.steps div{background:#f8f7f4;border-radius:99px;font:400 12px "Geist Mono",monospace;color:#8b887f;padding:8px 6px;box-shadow:0 0 0 1px rgba(20,20,22,.05)}
+.steps b{color:#2b36ff;font-weight:500}
+.menu{font-weight:400;font-size:19px;letter-spacing:-.01em;transition:transform .15s}
+a.menu:hover{box-shadow:0 0 0 1px rgba(43,54,255,.35),0 28px 46px -30px rgba(40,34,20,.35);transform:translateY(-2px)}
+.menu .ic{display:grid;place-items:center;width:56px;height:56px;border-radius:18px;background:rgba(20,20,22,.05);font-size:26px;margin-right:16px}
+.menu em{color:#8b887f}.menu small{font:500 12px "Geist Mono",monospace;color:#2b36ff}.menu.off small{color:#8b887f}
+.foot{font:400 12px "Geist Mono",monospace}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Geist+Mono:wght@400;500&family=Inter:wght@400&display=swap">
 </head>
 <body><main id="app"></main>
 <script>
