@@ -26,6 +26,7 @@ button:disabled{opacity:.5}
 .paper input[type=text],.paper textarea{border:0;background:transparent;font:inherit;font-size:calc(20/920*100cqw);padding:0 .3em;resize:none;outline:0;color:#0b3d91}
 .paper textarea{padding:.4em}
 .paper :is(input,textarea):not([readonly]){background:#fffbe0}
+.paper input.dt{text-align:center;padding:0}
 .paper .cb{display:block}
 .paper .cb input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
 .paper .cb span{position:absolute;inset:0;display:none;color:#0b3d91;font-size:calc(26/920*100cqw);line-height:1;text-align:center;font-weight:700}
@@ -83,7 +84,7 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
       <g fill="none" stroke="#000"><rect x="100" y="145" width="723" height="873"/>
         <path d="M100 309H823M100 378H823M100 752H823M100 865H823M100 950H823M277 145V378M507 145V378M684 145V378M277 752V1018M483 865V950M629 865V950"/></g>
       ${UNITS.map((u,i)=>`<text x="283" y="${174+i*25}">□${u}</text>`).join('')}
-      <text x="516" y="236">申請日期</text><text x="108" y="236">申請單位</text>
+      <text x="516" y="236">申請日期</text><text x="728" y="236">年</text><text x="766" y="236">月</text><text x="800" y="236">日</text><text x="108" y="236">申請單位</text>
       <text x="108" y="336">修繕/採購</text><text x="131" y="366">標的</text>
       <text x="516" y="335">專項聯絡人簽名:</text><text x="516" y="366">同工簽名:</text>
       <text x="108" y="520">申請目的</text><text x="108" y="547" font-size="17">(基於身體交通的原</text><text x="108" y="571" font-size="17">則，請詳述修繕或</text><text x="108" y="595" font-size="17">採購之需求原因)</text>
@@ -97,11 +98,11 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
       <text x="108" y="985">審核</text><text x="283" y="978">□大區經常費支出</text><text x="283" y="1003">□維修管理費支出</text>
       <text x="90" y="1045" font-size="19">林前12：12 就如身體是一個，卻有許多肢體，而且身體上一切的肢體雖多，仍是一個身</text>
       <text x="90" y="1072" font-size="19">體，基督也是這樣。</text></svg>
-    <input type="text" data-k="date" style="${P([690,205,823,250])}" value="${esc(form.date)}" placeholder="　年　月　日" ${ro}>
     <input type="text" data-k="subject" style="${P([281,313,503,374])}" value="${esc(form.subject)}" ${ro}>
     <textarea data-k="purpose" style="${P([281,382,819,748])}" ${ro}>${esc(form.purpose)}</textarea>
     `;
-  const est=UNITS.map((_,i)=>cb('u'+i,283,157+i*25)).join('')+cb('e0',283,760)+cb('e1',283,784)+cb('a0',283,961)+cb('a1',283,986);
+  const dt=(k,a,b,n)=>`<input type="text" class="dt" maxlength="${n}" data-k="${k}" style="${P([a,213,b,250])}" value="${esc(form[k])}" ${ro}>`;
+  const est=dt('dy',684,728,4)+dt('dm',746,766,2)+dt('dd',784,801,2)+UNITS.map((_,i)=>cb('u'+i,283,157+i*25)).join('')+cb('e0',283,760)+cb('e1',283,784)+cb('a0',283,961)+cb('a1',283,986);
   const sg=Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
     :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
   return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${est}${sg}</div>`;
