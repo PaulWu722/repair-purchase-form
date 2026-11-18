@@ -21,33 +21,51 @@ button:disabled{opacity:.5}
 .row input[type=text]{flex:1;min-width:200px;font:inherit;padding:6px}
 .ok{color:#2f6f4f;font-weight:700}.wait{color:#b25b00}
 .msg{color:#b00020;white-space:pre-wrap}
-/* 申請單：以 920x1301 座標定位，所有元件用 % 與 cqw 縮放 */
-.paper{container-type:inline-size;position:relative;width:100%;aspect-ratio:920/1301;background:#fff;box-shadow:0 1px 6px #0003;font-family:"Noto Serif TC","PMingLiU",serif}
+/* 申請單：以各表單自己的座標空間定位，元件用 % 與 --u(=100cqw/W) 縮放 */
+.paper{container-type:inline-size;position:relative;width:100%;aspect-ratio:920/1301;--u:calc(100cqw/920);--pw:210mm;--ph:297mm;background:#fff;box-shadow:0 1px 6px #0003;font-family:"Noto Serif TC","PMingLiU",serif}
 .paper svg,.paper>img.bg{position:absolute;inset:0;width:100%;height:100%}
 .paper>*{position:absolute}
-.paper input[type=text],.paper textarea{border:0;background:transparent;font:inherit;font-size:calc(20/920*100cqw);padding:0 .3em;resize:none;outline:0;color:#0b3d91}
+.paper input[type=text],.paper textarea{border:0;background:transparent;font:inherit;font-size:calc(20*var(--u));padding:0 .3em;resize:none;outline:0;color:#0b3d91}
 .paper textarea{padding:.4em}
 .paper :is(input,textarea):not([readonly]){background:#fffbe0}
 .paper input.dt{text-align:center;padding:0}
 .paper .cb{display:block}
 .paper .cb input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
-.paper .cb span{position:absolute;inset:0;display:none;color:#0b3d91;font-size:calc(26/920*100cqw);line-height:1;text-align:center;font-weight:700}
+.paper .cb span{position:absolute;inset:0;display:none;color:#0b3d91;font-size:calc(26*var(--u));line-height:1;text-align:center;font-weight:700}
 .paper .cb input:checked+span{display:block}
 .paper img.sig{object-fit:contain}
-.slot{border:2px dashed #e0a000;background:#fff8e0aa;color:#b25b00;font-size:calc(14/920*100cqw);display:flex;align-items:center;justify-content:center}
+.slot{border:2px dashed #e0a000;background:#fff8e0aa;color:#b25b00;font-size:calc(14*var(--u));display:flex;align-items:center;justify-content:center}
 .pad{width:100%;max-width:600px;aspect-ratio:3/1;border:2px solid #999;border-radius:8px;background:#fff;touch-action:none;display:block}
 .est img{max-width:100%}.est iframe{width:100%;height:600px;border:1px solid #ccc}
-@media print{body{background:#fff}main{padding:0;max-width:none}.noprint{display:none!important}.paper{box-shadow:none;width:210mm;height:297mm;aspect-ratio:auto;page-break-after:always}@page{size:A4;margin:0}}
+@media print{body{background:#fff}main{padding:0;max-width:none}.noprint{display:none!important}.paper{box-shadow:none;width:var(--pw);height:var(--ph);aspect-ratio:auto;page-break-after:always}}
 </style>
 </head>
 <body><main id="app"></main>
 <script>
 const URL_='https://gserdnkovlwfdgcaguqe.supabase.co',KEY='sb_publishable_OkPLiqg_-Jnu1ywt8j-o0A_R_BFyIZN';
-const ROLES={contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'};
-// 簽名位置 [x1,y1,x2,y2]，座標為申請單範本 920x1301
-const SLOT={contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]};
 const UNITS=['高中弟兄姊妹之家','大專弟兄姊妹之家','青職弟兄姊妹之家','同工之家','復興大樓','科園會所'];
-const P=([a,b,c,d])=>`left:${a/9.2}%;top:${b/13.01}%;width:${(c-a)/9.2}%;height:${(d-b)/13.01}%`;
+const DIG=['佰','拾','萬','仟','佰','拾','元整'];
+// 各表單設定。slot 為簽名位置 [x1,y1,x2,y2]（該表單座標空間）
+const FORMS={
+  repair:{kind:'repair',name:'修繕器材採購申請單',W:920,H:1301,pw:'210mm',ph:'297mm',page:'A4',title:'subject',titleLabel:'修繕/採購標的',suffix:'修繕申請',
+    est:{label:'廠商估價單',required:true},
+    roles:{contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'},
+    slot:{contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]}},
+  huang:{kind:'huang',name:'黃單（支出結報單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
+    est:{label:'單據／發票（選填）',required:false},
+    first:'handler1', // 發起者只能簽這一格
+    roles:{handler1:'經手人（一）',handler2:'經手人（二）',area:'區負責',elder:'長老/負責弟兄',finance:'財務監督',accounting:'會計核銷',cashier:'出納'},
+    slot:{handler1:[524,794,770,877],handler2:[774,794,1021,877],elder:[524,884,1021,967],accounting:[524,974,1021,1057],cashier:[524,1064,1021,1152],area:[1394,794,1861,877],finance:[1394,884,1861,967]},
+    hint(f){const n=parseInt(DIG.map((_,i)=>f['a'+i]||'').join(''),10);if(!n)return '';
+      return `金額 NT$ ${n.toLocaleString()}：`+(n<=4000?'須區負責簽證':n<=10000?'須長老/負責弟兄簽證':'須財務監督會簽')+'；經手人必須二人以上。'}}
+};
+let F=FORMS.repair,ROLES=F.roles,SLOT=F.slot;
+function setForm(k){
+  F=FORMS[k]||FORMS.repair;ROLES=F.roles;SLOT=F.slot;
+  let s=document.getElementById('pg');if(!s){s=document.createElement('style');s.id='pg';document.head.append(s)}
+  s.textContent=`@page{size:${F.page};margin:0}`;
+}
+const P=([a,b,c,d])=>`left:${a/F.W*100}%;top:${b/F.H*100}%;width:${(c-a)/F.W*100}%;height:${(d-b)/F.H*100}%`;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -86,8 +104,13 @@ async function toImageBlob(file){
   return new Promise(r=>c.toBlob(r,'image/jpeg',.9));
 }
 
-// opts: {edit, bg(url), form, sigs, slots(role to highlight)}
-function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
+const sigLayer=(sigs,hl)=>Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
+  :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
+const wrap=(bg,inner)=>`<div class="paper" style="aspect-ratio:${F.W}/${F.H};--u:calc(100cqw/${F.W});--pw:${F.pw};--ph:${F.ph}">${bg?`<img class="bg" src="${bg}">`:''}${inner}</div>`;
+// opts: {edit, bg(url), form, sigs, hl(要顯示虛線框的身份)}
+const paper=o=>(F.kind==='huang'?huangPaper:repairPaper)(o||{});
+
+function repairPaper({edit=false,bg='',form={},sigs={},hl=''}={}){
   const ro=edit?'':'readonly',dis=edit?'':'disabled';
   const cb=(k,x,y)=>`<label class="cb" style="${P([x,y,x+20,y+22])}"><input type="checkbox" data-k="${k}" ${form[k]?'checked':''} ${dis}><span>✓</span></label>`;
   const fields=bg?'':`
@@ -111,44 +134,84 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
       <text x="108" y="985">審核</text><text x="283" y="978">□大區經常費支出</text><text x="283" y="1003">□維修管理費支出</text>
       <text x="90" y="1045" font-size="19">林前12：12 就如身體是一個，卻有許多肢體，而且身體上一切的肢體雖多，仍是一個身</text>
       <text x="90" y="1072" font-size="19">體，基督也是這樣。</text></svg>
-    <textarea data-k="subject" style="${P([281,313,503,374])};font-size:calc(18/920*100cqw);padding:.15em .3em" ${ro}>${esc(form.subject)}</textarea>
+    <textarea data-k="subject" style="${P([281,313,503,374])};font-size:calc(18*var(--u));padding:.15em .3em" ${ro}>${esc(form.subject)}</textarea>
     <textarea data-k="purpose" style="${P([281,382,819,748])}" ${ro}>${esc(form.purpose)}</textarea>
     `;
   const dt=(k,a,b,n)=>`<input type="text" class="dt" maxlength="${n}" data-k="${k}" style="${P([a,213,b,250])}" value="${esc(form[k])}" ${ro}>`;
   const est=dt('dy',684,728,4)+dt('dm',746,766,2)+dt('dd',784,801,2)+UNITS.map((_,i)=>cb('u'+i,283,157+i*25)).join('')+cb('e0',283,760)+cb('e1',283,784);
-  const sg=Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
-    :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
-  return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${est}${sg}</div>`;
+  return wrap(bg,fields+est+sigLayer(sigs,hl));
 }
-const collect=()=>{const f={};document.querySelectorAll('#app [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
+
+// 黃單：上傳模式只疊簽名；線上填寫模式整張自己畫
+function huangPaper({edit=false,bg='',form={},sigs={},hl=''}={}){
+  if(bg)return wrap(bg,sigLayer(sigs,hl));
+  const ro=edit?'':'readonly';
+  const inp=(k,box,css='',n='')=>`<input type="text" class="dt" data-k="${k}" ${n?`maxlength="${n}"`:''} style="${P(box)};font-size:calc(38*var(--u));${css}" value="${esc(form[k])}" ${ro}>`;
+  const L=(x,y,t,s=40)=>`<text x="${x}" y="${y}" font-size="${s}">${t}</text>`;
+  const digits=DIG.map((u,i)=>inp('a'+i,[690+i*165,732,760+i*165,782],'',1)+'').join('');
+  const svg=`<svg viewBox="0 0 2000 1414" fill="#000">
+    <text x="1000" y="190" font-size="64" text-anchor="middle" letter-spacing="24">台中市召會支出結報單</text>
+    <g stroke="#000" stroke-width="4" fill="none"><path d="M565 210H1455M1285 305H1855M170 310H380M490 310H700"/></g>
+    ${L(1500,235,'支字第')}${L(1810,235,'號')}${L(1295,285,'主後20')}${L(1570,285,'年')}${L(1705,285,'月')}${L(1830,285,'日')}
+    ${L(395,300,'大區')}${L(720,300,'小區')}
+    <g stroke="#000" stroke-width="3" fill="none"><rect x="165" y="320" width="1700" height="835"/>
+      <path d="M255 455H1865M165 712H1865M165 790H1865M165 880H1865M165 970H1865M165 1060H1865M255 320V712M513 320V790M520 790V1155M770 790V880M1025 790V1155M1390 790V1155"/></g>
+    ${L(185,450,'結')}${L(185,650,'報')}${L(290,410,'用　　途')}${L(290,600,'說　　明')}
+    ${L(195,765,'金　　額')}${L(540,765,'新台幣')}${DIG.map((u,i)=>L(690+i*165+75,765,u)).join('')}
+    ${L(195,850,'經　手　人')}${L(195,940,'長老/負責弟兄',38)}${L(195,1030,'會　計　核　銷')}${L(195,1120,'出　　　納')}
+    ${L(1060,850,'區　負　責')}${L(1060,940,'財　務　監　督')}${L(1060,1030,'會　計　科　目')}${L(1060,1120,'註　　　記')}
+    ${L(180,1210,'1.經手人必須二人以上。',30)}${L(180,1260,'2.結報時4000元以下必須區負責簽證，4000-10000元必須長老/負責弟兄簽證，10000元以上必須由財務監督會簽。',30)}</svg>`;
+  return wrap('',svg
+    +inp('no',[1640,190,1800,250])+inp('dy',[1480,255,1565,300])+inp('dm',[1612,255,1700,300])+inp('dd',[1745,255,1825,300])
+    +inp('dq',[170,265,380,308])+inp('xq',[490,265,700,308])
+    +`<input type="text" data-k="purpose" style="${P([517,324,1861,451])};font-size:calc(38*var(--u))" value="${esc(form.purpose)}" ${ro}>`
+    +`<textarea data-k="desc" style="${P([517,459,1861,708])};font-size:calc(36*var(--u))" ${ro}>${esc(form.desc)}</textarea>`
+    +digits+sigLayer(sigs,hl));
+}
+const collect=()=>{const f={_kind:F.kind};document.querySelectorAll('#app [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
 const isImg=u=>/\.(jpe?g|png|gif|webp)$/i.test(u);
-const estimates=files=>files.length?`<div class="card est"><b>廠商估價單</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${f.url}" target="_blank">開新分頁</a></p>${isImg(f.url)?`<img src="${f.url}">`:`<iframe src="${f.url}"></iframe>`}`).join('')}</div>`:'<div class="card">（未附估價單）</div>';
+const estimates=files=>files.length?`<div class="card est"><b>${F.est.label}</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${f.url}" target="_blank">開新分頁</a></p>${isImg(f.url)?`<img src="${f.url}">`:`<iframe src="${f.url}"></iframe>`}`).join('')}</div>`:`<div class="card">（未附${F.est.label.replace(/（.*/,'')}）</div>`;
+
+// 簽名板：回傳 ()=>簽名圖(dataURL) 或 null
+function sigPad(c,clr){
+  const x=c.getContext('2d');let on=false,dirty=false;
+  x.lineWidth=5;x.lineCap=x.lineJoin='round';x.strokeStyle='#111';
+  const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
+  c.onpointerdown=e=>{on=true;dirty=true;c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...pt(e))};
+  c.onpointermove=e=>{if(on){x.lineTo(...pt(e));x.stroke()}};
+  c.onpointerup=()=>on=false;
+  clr.onclick=()=>{x.clearRect(0,0,c.width,c.height);dirty=false};
+  return()=>dirty?c.toDataURL('image/png'):null;
+}
 
 /* ---------- 選單頁 ---------- */
 function menu(){
-  const items=[['修繕器材採購申請單','?f=repair',1],['黃單','',0],['預算單','',0]];
+  const items=[['修繕器材採購申請單','?f=repair',1],['黃單（支出結報單）','?f=huang',1],['預算單','',0]];
   $('#app').innerHTML=`<h1>請選擇要產生的表單</h1>`+items.map(([n,h,on])=>on
     ?`<a class="card menu" href="${h}">${n}<small>點此開始</small></a>`
     :`<div class="card menu off">${n}<small>即將推出</small></div>`).join('');
 }
 /* ---------- 建立頁 ---------- */
 function create(){
-  let mode='fill',bgFile=null,estFiles=[],subj='';
+  let mode='fill',bgFile=null,estFiles=[],subj='',getSig=null;
   const draw=()=>{
-    $('#app').innerHTML=`<p class="noprint"><a href="./">← 回選單</a></p><h1>修繕器材採購申請單</h1>
+    $('#app').innerHTML=`<p class="noprint"><a href="./">← 回選單</a></p><h1>${F.name}</h1>
     <div class="card"><div class="tabs">
       <button class="${mode==='fill'?'':'alt'}" id="m1">線上填寫範本</button>
-      <button class="${mode==='upload'?'':'alt'}" id="m2">上傳已填寫的申請單</button></div>
-      ${mode==='upload'?`<div class="row">申請單（PDF 或圖片，第一頁）：<input type="file" id="bg" accept="application/pdf,image/*"></div>
-        <div class="row">修繕/採購標的（做為連結標題）：<input type="text" data-k="subject" id="subj" value="${esc(subj)}"></div>`:''}
+      <button class="${mode==='upload'?'':'alt'}" id="m2">上傳已填寫的表單</button></div>
+      ${mode==='upload'?`<div class="row">表單（PDF 或圖片，第一頁）：<input type="file" id="bg" accept="application/pdf,image/*"></div>
+        <div class="row">${F.titleLabel}（做為連結標題）：<input type="text" data-k="${F.title}" id="subj" value="${esc(subj)}"></div>`:''}
       ${mode==='fill'||bgFile?'':'<p>請選擇檔案</p>'}</div>
     <div id="pv"></div>
-    <div class="card"><div class="row">廠商估價單（PDF 或圖片，可多選）：<input type="file" id="est" accept="application/pdf,image/*" multiple></div>
+    ${F.first?`<div class="card"><b>${ROLES[F.first]}簽名</b>（發起者只能簽這一格，其他欄位由簽名人連結簽）<canvas id="pad1" class="pad" width="900" height="300"></canvas>
+      <div class="row"><button class="alt" id="clr1">清除</button></div></div>`:''}
+    <div class="card"><div class="row">${F.est.label}（PDF 或圖片，可多選）：<input type="file" id="est" accept="application/pdf,image/*" multiple></div>
       <div id="el">${estFiles.map(f=>esc(f.name)).join('、')}</div></div>
     <div class="card"><button id="go">建立並產生簽名連結</button> <span class="msg" id="err"></span></div>`;
     $('#m1').onclick=()=>{mode='fill';draw()};$('#m2').onclick=()=>{mode='upload';draw()};
     if(mode==='fill')$('#pv').innerHTML=paper({edit:true});
     if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,bg:window.URL.createObjectURL(bgFile.prev)});
+    if(F.first)getSig=sigPad($('#pad1'),$('#clr1'));
     if($('#subj'))$('#subj').oninput=e=>subj=e.target.value;
     if($('#bg'))$('#bg').onchange=async e=>{if(!e.target.files[0])return;$('#err').textContent='處理中…';
       try{const f=await fromHeic(e.target.files[0]);bgFile={src:f,prev:await toImageBlob(f)};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
@@ -156,11 +219,20 @@ function create(){
     $('#go').onclick=async()=>{
       const b=$('#go');b.disabled=true;$('#err').textContent='上傳中…';
       try{
-        if(mode==='upload'&&!bgFile)throw Error('請先上傳申請單');
-        if(!estFiles.length)throw Error('請至少上傳一份廠商估價單');
+        if(mode==='upload'&&!bgFile)throw Error('請先上傳表單');
+        const form=collect();
+        if(F.kind==='huang'){
+          if(mode==='fill'){
+            const miss=['no','dy','dm','dd','dq','xq','purpose','desc'].filter(k=>!(form[k]||'').trim());
+            if(miss.length||!DIG.some((_,i)=>(form['a'+i]||'').trim()))throw Error('黃單所有欄位都要填寫（單號、日期、大區、小區、用途、說明、金額）');
+          }else if(!(form.purpose||'').trim())throw Error('請填寫「用途」（做為連結標題）');
+          if(!getSig())throw Error('請先在「經手人（一）」簽名');
+        }
+        if(F.est.required&&!estFiles.length)throw Error('請至少上傳一份'+F.est.label);
         const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
         const files=[];for(const o of estFiles){const f=await fromHeic(o);files.push({name:f.name,url:await upload(f,ext(f.name))})}
-        const id=await rpc('rp_create',{p_form:collect(),p_bg:bgUrl,p_files:files});
+        const id=await rpc('rp_create',{p_form:form,p_bg:bgUrl,p_files:files});
+        if(F.first)await rpc('rp_sign',{p_id:id,p_role:F.first,p_img:getSig()});
         location.search='?id='+id;
       }catch(x){$('#err').textContent=x.message;b.disabled=false}
     };
@@ -172,22 +244,24 @@ function create(){
 async function view(){
   const d=await rpc('rp_get',{p_id:id});
   if(!d){$('#app').innerHTML='<p class="msg">找不到這份申請單</p>';return}
-  window.SUBJ=(d.form.subject||'').trim();
+  setForm(d.form._kind);
+  window.SUBJ=(d.form[F.title]||'').trim();
   const lock=localStorage.getItem('rp_'+id); // 這個瀏覽器簽過就鎖定該身份
   if(lock&&ROLES[lock]&&(pick||role))role=lock; // 總覽連結不受鎖定影響
   if(pick&&!role){ // 簽名人入口：先選身份
-    $('#app').innerHTML=`<h1>修繕器材採購申請單</h1><div class="card"><b>請選擇您的身份</b>（選了之後，簽名完成就不能再簽其他身份）
+    $('#app').innerHTML=`<h1>${F.name}</h1><div class="card"><b>請選擇您的身份</b>（選了之後，簽名完成就不能再簽其他身份）
       ${Object.entries(ROLES).map(([r,n])=>d.sigs[r]?`<div class="card menu off">${n}<small>已簽名</small></div>`:`<button class="card menu" style="width:100%;border:0;font:inherit;font-weight:700" onclick="setRole('${r}')">${n}<small>我是${n}</small></button>`).join('')}</div>`;
     return;
   }
   const mine=role&&ROLES[role]?role:'',signed=d.sigs[mine];
-  let h=`<h1>修繕器材採購申請單</h1>`;
-  if(mine)h+=`<div class="card">您是：<b>${ROLES[mine]}</b>　${signed?'<span class="ok">✔ 已簽名</span>':'請先看完下方申請單與估價單，再於最下方簽名。'}</div>`;
+  let h=`<h1>${F.name}</h1>`;
+  if(mine)h+=`<div class="card">您是：<b>${ROLES[mine]}</b>　${signed?'<span class="ok">✔ 已簽名</span>':'請先看完下方表單與附件，再於最下方簽名。'}</div>`;
   else{
     const u=`${location.origin}${location.pathname}?id=${id}&s=1`;
-    h+=`<div class="card noprint"><b>簽名人連結</b>（只要傳這一條給四位簽名人，他們進去後自己選身份）
+    h+=`<div class="card noprint"><b>簽名人連結</b>（只要傳這一條給所有簽名人，他們進去後自己選身份）
     <div class="row"><input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>
     <div class="row">${Object.entries(ROLES).map(([r,n])=>`${n} ${d.sigs[r]?'<span class="ok">✔ 已簽</span>':'<span class="wait">尚未簽</span>'}`).join('　')}</div>
+    ${F.hint&&F.hint(d.form)?`<div class="row wait">${F.hint(d.form)}</div>`:''}
     <div class="row"><button onclick="copyAll(this,SUBJ)">一鍵複製 2 組連結</button></div>
     <div class="row"><button onclick="location.reload()" class="alt">重新整理狀態</button><button onclick="print()">列印／存成 PDF</button></div></div>`;
   }
@@ -200,27 +274,21 @@ async function view(){
 function setRole(r){role=r;view()}
 function copyAll(b,title){
   const base=`${location.origin}${location.pathname}?id=${id}`;
-  navigator.clipboard.writeText(`${title}修繕申請\n\n我的連結：\n${base}\n\n簽名人連結：\n${base}&s=1`);
+  navigator.clipboard.writeText(`${title}${F.suffix}\n我的連結${base}\n簽名人連結${base}&s=1`);
   b.textContent='已複製 ✔';
 }
 function pad(){
-  const c=$('#pad'),x=c.getContext('2d');let on=false,dirty=false;
-  x.lineWidth=5;x.lineCap=x.lineJoin='round';x.strokeStyle='#111';
-  const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
-  c.onpointerdown=e=>{on=true;dirty=true;c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...pt(e))};
-  c.onpointermove=e=>{if(on){x.lineTo(...pt(e));x.stroke()}};
-  c.onpointerup=()=>on=false;
-  $('#clr').onclick=()=>{x.clearRect(0,0,c.width,c.height);dirty=false};
+  const get=sigPad($('#pad'),$('#clr'));
   $('#sub').onclick=async()=>{
-    if(!dirty){$('#err').textContent='請先簽名';return}
+    const img=get();if(!img){$('#err').textContent='請先簽名';return}
     $('#sub').disabled=true;
-    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:c.toDataURL('image/png')});localStorage.setItem('rp_'+id,role);view()}
+    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:img});localStorage.setItem('rp_'+id,role);view()}
     catch(e){$('#err').textContent=e.message;$('#sub').disabled=false}
   };
 }
 
 let q=new URLSearchParams(location.search),id=q.get('id'),role=q.get('r'),pick=q.get('s');
-(id?view():q.get('f')==='repair'?create():menu());
+if(id)view();else if(FORMS[q.get('f')]){setForm(q.get('f'));create()}else menu();
 </script>
 </body>
 </html>
