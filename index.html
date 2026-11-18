@@ -168,12 +168,18 @@ async function view(){
   else h+=`<div class="card noprint"><b>簽名連結</b>（分別傳給四位簽名人）${Object.entries(ROLES).map(([r,n])=>{
     const u=`${location.origin}${location.pathname}?id=${id}&r=${r}`;
     return `<div class="row">${n}　${d.sigs[r]?'<span class="ok">✔ 已簽</span>':'<span class="wait">尚未簽</span>'}<input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>`}).join('')}
+    <div class="row"><button onclick="copyAll(this)">一鍵複製全部 5 組連結</button></div>
     <div class="row"><button onclick="location.reload()" class="alt">重新整理狀態</button><button onclick="print()">列印／存成 PDF</button></div></div>`;
   h+=paper({bg:d.bg_url||'',form:d.form,sigs:d.sigs,hl:mine&&!signed?mine:''})+`<div class="noprint">${estimates(d.files)}`;
   if(mine&&!signed)h+=`<div class="card"><b>簽名</b>（用手指或滑鼠在框內簽名）<canvas id="pad" class="pad" width="900" height="300"></canvas>
     <div class="row"><button class="alt" id="clr">清除</button><button id="sub">確認簽名並送出</button><span class="msg" id="err"></span></div></div>`;
   $('#app').innerHTML=h+'</div>';
   if(mine&&!signed)pad();
+}
+function copyAll(b){
+  const base=`${location.origin}${location.pathname}?id=${id}`;
+  navigator.clipboard.writeText([`我的連結（總覽）：${base}`,...Object.entries(ROLES).map(([r,n])=>`${n}：${base}&r=${r}`)].join('\n'));
+  b.textContent='已複製 ✔';
 }
 function pad(){
   const c=$('#pad'),x=c.getContext('2d');let on=false,dirty=false;
