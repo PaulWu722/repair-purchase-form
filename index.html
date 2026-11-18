@@ -36,6 +36,7 @@ a.menu:hover{box-shadow:0 3px 10px #0003}
 .paper .cb span{position:absolute;inset:0;display:none;color:#0b3d91;font-size:calc(26*var(--u));line-height:1;text-align:center;font-weight:700}
 .paper .cb input:checked+span{display:block}
 .paper img.sig{object-fit:contain}
+.paper .stamp{display:flex;align-items:flex-end;justify-content:flex-end;font-family:"Geist Mono",monospace;color:#555;line-height:1;white-space:nowrap}
 .slot{border:2px dashed #e0a000;background:#fff8e0aa;color:#b25b00;font-size:calc(14*var(--u));display:flex;align-items:center;justify-content:center}
 .pad{width:100%;max-width:600px;aspect-ratio:3/1;border:2px solid #999;border-radius:8px;background:#fff;touch-action:none;display:block}
 .est img{max-width:100%}.est iframe{width:100%;height:600px;border:1px solid #ccc}
@@ -85,11 +86,11 @@ const DIG=['佰','拾','萬','仟','佰','拾','元整'];
 // 各表單設定。slot 為簽名位置 [x1,y1,x2,y2]（該表單座標空間）
 const FORMS={
   repair:{kind:'repair',name:'修繕器材採購申請單',W:920,H:1301,pw:'210mm',ph:'297mm',page:'A4',title:'subject',titleLabel:'修繕/採購標的',suffix:'修繕申請',
-    est:{label:'廠商估價單',required:true},
+    est:{label:'廠商估價單',required:true},stamp:10,
     roles:{contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'},
     slot:{contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]}},
   huang:{kind:'huang',name:'支出結報單（黃單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
-    est:{label:'單據／發票（選填）',required:false},
+    est:{label:'單據／發票（選填）',required:false},stamp:24,
     first:'handler1', // 發起者只能簽這一格
     roles:{handler1:'經手人（一）',handler2:'經手人（二）',area:'區負責',elder:'長老/負責弟兄',finance:'財務監督',accounting:'會計核銷',cashier:'出納'},
     slot:{handler1:[524,794,770,877],handler2:[774,794,1021,877],elder:[524,884,1021,967],accounting:[524,974,1021,1057],cashier:[524,1064,1021,1152],area:[1394,794,1861,877],finance:[1394,884,1861,967]},
@@ -165,8 +166,14 @@ async function toImageBlob(file){
   return new Promise(r=>c.toBlob(r,'image/jpeg',.9));
 }
 
-const sigLayer=(sigs,hl)=>Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${esc(sigs[r])}">`
-  :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
+// 簽名日期時間，例如 11.18 2123（台北時間）
+const stampText=iso=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(iso)).map(x=>[x.type,x.value]));return `${p.month}.${p.day} ${p.hour}${p.minute}`};
+let TIMES={};
+const sigLayer=(sigs,hl)=>Object.keys(ROLES).map(r=>{
+  if(sigs[r]){
+    const [x1,,x2,y2]=SLOT[r],sz=F.stamp,t=TIMES[r]?`<div class="stamp" style="${P([x1,y2-sz*1.6,x2-sz*.3,y2])};font-size:calc(${sz}*var(--u))">${stampText(TIMES[r])}</div>`:'';
+    return `<img class="sig" style="${P(SLOT[r])}" src="${esc(sigs[r])}">${t}`}
+  return r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:''}).join('');
 const wrap=(bg,inner)=>`<div class="paper" style="aspect-ratio:${F.W}/${F.H};--u:calc(100cqw/${F.W});--pw:${F.pw};--ph:${F.ph}">${bg?`<img class="bg" src="${esc(bg)}">`:''}${inner}</div>`;
 // opts: {edit, bg(url), form, sigs, hl(要顯示虛線框的身份)}
 const paper=o=>(F.kind==='huang'?huangPaper:repairPaper)(o||{});
@@ -361,6 +368,7 @@ async function view(){
     <div class="row"><button onclick="copyAll(this,SUBJ)">一鍵複製 2 組連結</button></div>
     <div class="row"><button onclick="location.reload()" class="alt">重新整理狀態</button><button onclick="print()">列印／存成 PDF</button></div></div>`;
   }
+  TIMES=d.times||{};
   h+=paper({bg:d.bg_url||'',form:d.form,sigs:d.sigs,hl:ok?mine:''})+`<div class="noprint">${estimates(d.files)}`;
   if(ok)h+=`<div class="card"><b>簽名</b>（用手指或滑鼠在框內簽名）<canvas id="pad" class="pad" width="900" height="300"></canvas>
     <div class="row"><button class="alt" id="clr">清除</button><button id="sub">確認簽名並送出</button><span class="msg" id="err"></span></div></div>`;
