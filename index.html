@@ -16,6 +16,10 @@ button,.btn{font:inherit;padding:8px 16px;border:0;border-radius:8px;background:
 button.alt{background:#e4e4df;color:#222}
 button:disabled{opacity:.5}
 .menu{display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:700;padding:22px 20px;color:#222;text-decoration:none}.menu small{font-size:14px;font-weight:400;color:#2f6f4f}.menu.off{opacity:.55}.menu.off small{color:#888}
+.hero{background:linear-gradient(135deg,#2f6f4f,#4d8f6b);color:#fff;border-radius:14px;padding:22px 20px;margin:4px 0 12px}.hero h1{margin:2px 0 6px;font-size:28px}.hero p{font-weight:400;margin:0;line-height:1.6;opacity:.95}.hero small{opacity:.85}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.steps div{flex:1;min-width:90px;background:#fff;border-radius:8px;padding:8px 6px;text-align:center;font-size:14px;box-shadow:0 1px 3px #0001}.steps b{color:#2f6f4f}
+.menu .ic{font-size:34px;margin-right:14px}.menu .tx{flex:1;display:block}.menu em{display:block;font-style:normal;font-weight:400;font-size:14px;color:#666;margin-top:4px;line-height:1.5}.menu small{white-space:nowrap;margin-left:10px}.foot{color:#888;font-size:13px;text-align:center}
+a.menu:hover{box-shadow:0 3px 10px #0003}
 .tabs{display:flex;gap:8px;margin-bottom:10px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
 .row input[type=text]{flex:1;min-width:200px;font:inherit;padding:6px}
@@ -51,7 +55,7 @@ const FORMS={
     est:{label:'廠商估價單',required:true},
     roles:{contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'},
     slot:{contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]}},
-  huang:{kind:'huang',name:'黃單（支出結報單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
+  huang:{kind:'huang',name:'支出結報單（黃單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
     est:{label:'單據／發票（選填）',required:false},
     first:'handler1', // 發起者只能簽這一格
     roles:{handler1:'經手人（一）',handler2:'經手人（二）',area:'區負責',elder:'長老/負責弟兄',finance:'財務監督',accounting:'會計核銷',cashier:'出納'},
@@ -186,10 +190,16 @@ function sigPad(c,clr){
 
 /* ---------- 選單頁 ---------- */
 function menu(){
-  const items=[['修繕器材採購申請單','?f=repair',1],['黃單（支出結報單）','?f=huang',1],['預算單','',0]];
-  $('#app').innerHTML=`<h1>請選擇要產生的表單</h1>`+items.map(([n,h,on])=>on
-    ?`<a class="card menu" href="${h}">${n}<small>點此開始</small></a>`
-    :`<div class="card menu off">${n}<small>即將推出</small></div>`).join('');
+  const items=[
+    ['🔧','修繕器材採購申請單','弟兄姊妹之家、會所的修繕與器材採購。附廠商估價單，由專項聯絡人、同工、修繕組、財務監督簽名。','?f=repair'],
+    ['🧾','支出結報單（黃單）','支出結報。發起者填寫全部欄位並簽「經手人（一）」，其餘由經手人（二）、區負責、長老/負責弟兄、財務監督、會計、出納簽名。','?f=huang'],
+    ['📊','預算單','敬請期待。','']];
+  $('#app').innerHTML=`<div class="hero"><small>財團法人台灣省台中市召會</small><h1>表單中心</h1><p>選擇要產生的表單，建立後只要傳<b>一條連結</b>給簽名人，他們進去自己選身份簽名，簽名會自動貼到表單上。</p></div>
+    <div class="steps"><div><b>①</b> 選表單</div><div><b>②</b> 填寫／上傳</div><div><b>③</b> 傳一條連結</div><div><b>④</b> 簽名人簽名</div><div><b>⑤</b> 列印 PDF</div></div>`
+    +items.map(([i,n,d,h])=>h
+    ?`<a class="card menu" href="${h}"><span class="ic">${i}</span><span class="tx">${n}<em>${d}</em></span><small>開始 →</small></a>`
+    :`<div class="card menu off"><span class="ic">${i}</span><span class="tx">${n}<em>${d}</em></span><small>即將推出</small></div>`).join('')
+    +`<p class="foot">簽名連結請只傳給本人；簽名送出後不能修改。</p>`;
 }
 /* ---------- 建立頁 ---------- */
 function create(){
