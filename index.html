@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>修繕器材採購申請單</title>
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box}
@@ -66,8 +66,13 @@ const ext=n=>(n.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')|
 // HEIC/HEIF 瀏覽器讀不了，先轉成 JPEG
 async function fromHeic(f){
   if(!/\.(heic|heif)$/i.test(f.name)&&!/hei[cf]/i.test(f.type))return f;
-  const b=await heic2any({blob:f,toType:'image/jpeg',quality:.9});
-  return new File([Array.isArray(b)?b[0]:b],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+  let b;
+  try{b=await HeicTo({blob:f,type:'image/jpeg',quality:.9})}
+  catch(e){ // 程式庫不支援時，改用瀏覽器原生解碼（Safari 可）
+    const im=await createImageBitmap(f),c=document.createElement('canvas');c.width=im.width;c.height=im.height;
+    c.getContext('2d').drawImage(im,0,0);b=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));
+  }
+  return new File([b],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
 }
 // 把上傳的 PDF 第一頁轉成圖片；圖片原樣回傳
 async function toImageBlob(file){
