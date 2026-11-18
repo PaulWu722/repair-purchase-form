@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>修繕器材採購申請單</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans TC","PingFang TC",sans-serif;background:#f1f1ee;color:#222}
+main{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:8px 0 12px}
+.card{background:#fff;border-radius:10px;padding:14px 16px;margin:12px 0;box-shadow:0 1px 3px #0002}
+button,.btn{font:inherit;padding:8px 16px;border:0;border-radius:8px;background:#2f6f4f;color:#fff;cursor:pointer}
+button.alt{background:#e4e4df;color:#222}
+button:disabled{opacity:.5}
+.tabs{display:flex;gap:8px;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.row input[type=text]{flex:1;min-width:200px;font:inherit;padding:6px}
+.ok{color:#2f6f4f;font-weight:700}.wait{color:#b25b00}
+.msg{color:#b00020;white-space:pre-wrap}
+/* 申請單：以 920x1301 座標定位，所有元件用 % 與 cqw 縮放 */
+.paper{container-type:inline-size;position:relative;width:100%;aspect-ratio:920/1301;background:#fff;box-shadow:0 1px 6px #0003;font-family:"Noto Serif TC","PMingLiU",serif}
+.paper svg,.paper>img.bg{position:absolute;inset:0;width:100%;height:100%}
+.paper>*{position:absolute}
+.paper input[type=text],.paper textarea{border:0;background:transparent;font:inherit;font-size:calc(20/920*100cqw);padding:0 .3em;resize:none;outline:0;color:#0b3d91}
+.paper textarea{padding:.4em}
+.paper :is(input,textarea):not([readonly]){background:#fffbe0}
+.paper .cb{display:block}
+.paper .cb input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.paper .cb span{position:absolute;inset:0;display:none;color:#0b3d91;font-size:calc(26/920*100cqw);line-height:1;text-align:center;font-weight:700}
+.paper .cb input:checked+span{display:block}
+.paper img.sig{object-fit:contain}
+.slot{border:2px dashed #e0a000;background:#fff8e0aa;color:#b25b00;font-size:calc(14/920*100cqw);display:flex;align-items:center;justify-content:center}
+.pad{width:100%;max-width:600px;aspect-ratio:3/1;border:2px solid #999;border-radius:8px;background:#fff;touch-action:none;display:block}
+.est img{max-width:100%}.est iframe{width:100%;height:600px;border:1px solid #ccc}
+@media print{body{background:#fff}main{padding:0;max-width:none}.noprint{display:none!important}.paper{box-shadow:none;width:210mm;height:297mm;aspect-ratio:auto;page-break-after:always}@page{size:A4;margin:0}}
+</style>
+</head>
+<body><main id="app"></main>
+<script>
+const URL_='https://gserdnkovlwfdgcaguqe.supabase.co',KEY='sb_publishable_OkPLiqg_-Jnu1ywt8j-o0A_R_BFyIZN';
+const ROLES={contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'};
+// 簽名位置 [x1,y1,x2,y2]，座標為申請單範本 920x1301
+const SLOT={contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]};
+const UNITS=['高中弟兄姊妹之家','大專弟兄姊妹之家','青職弟兄姊妹之家','同工之家','復興大樓','科園會所'];
+const P=([a,b,c,d])=>`left:${a/9.2}%;top:${b/13.01}%;width:${(c-a)/9.2}%;height:${(d-b)/13.01}%`;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function rpc(fn,args){
+  const r=await fetch(`${URL_}/rest/v1/rpc/${fn}`,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
+  if(!r.ok)throw Error(r.status===409?'這個角色已經簽過名了':await r.text());
+  return r.text().then(t=>t?JSON.parse(t):null);
+}
+async function upload(blob,ext){
+  const p=`${crypto.randomUUID()}.${ext}`;
+  const r=await fetch(`${URL_}/storage/v1/object/procurement/${p}`,{method:'POST',headers:{apikey:KEY,'Content-Type':blob.type||'application/octet-stream'},body:blob});
+  if(!r.ok)throw Error(await r.text());
+  return `${URL_}/storage/v1/object/public/procurement/${p}`;
+}
+const ext=n=>(n.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+
+// 把上傳的 PDF 第一頁轉成圖片；圖片原樣回傳
+async function toImageBlob(file){
+  if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name))return file;
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pg=await (await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise).getPage(1);
+  const vp=pg.getViewport({scale:2}),c=document.createElement('canvas');
+  c.width=vp.width;c.height=vp.height;
+  await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  return new Promise(r=>c.toBlob(r,'image/jpeg',.9));
+}
+
+// opts: {edit, bg(url), form, sigs, slots(role to highlight)}
+function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
+  const ro=edit?'':'readonly',dis=edit?'':'disabled';
+  const cb=(k,x,y)=>`<label class="cb" style="${P([x,y,x+20,y+22])}"><input type="checkbox" data-k="${k}" ${form[k]?'checked':''} ${dis}><span>✓</span></label>`;
+  const fields=bg?'':`
+    <svg viewBox="0 0 920 1301" font-size="20" fill="#000">
+      <text x="460" y="100" font-size="28" text-anchor="middle">財團法人台灣省台中市召會</text>
+      <text x="460" y="136" font-size="26" text-anchor="middle">修繕與器材採購申請單（弟兄姊妹之家）</text>
+      <g fill="none" stroke="#000"><rect x="100" y="145" width="723" height="873"/>
+        <path d="M100 309H823M100 378H823M100 752H823M100 865H823M100 950H823M277 145V378M507 145V378M684 145V378M277 752V1018M483 865V950M629 865V950"/></g>
+      ${UNITS.map((u,i)=>`<text x="283" y="${174+i*25}">□${u}</text>`).join('')}
+      <text x="516" y="236">申請日期</text><text x="108" y="236">申請單位</text>
+      <text x="108" y="336">修繕/採購</text><text x="131" y="366">標的</text>
+      <text x="516" y="335">專項聯絡人簽名:</text><text x="516" y="366">同工簽名:</text>
+      <text x="108" y="520">申請目的</text><text x="108" y="547" font-size="17">(基於身體交通的原</text><text x="108" y="571" font-size="17">則，請詳述修繕或</text><text x="108" y="595" font-size="17">採購之需求原因)</text>
+      <text x="108" y="806">估價單檢核</text><text x="108" y="832">（請隨單附上）</text>
+      <text x="283" y="779" font-size="18">□金額超過二仟元，未滿二萬元者，須附二家以上廠商估價單。</text>
+      <text x="283" y="803" font-size="18">□金額超過二萬元，須附三家以上廠商估價單。</text>
+      <text x="283" y="827" font-size="18">※依交通，舉凡修繕或採購金額超過新台幣貳萬元者，須提長老</text>
+      <text x="283" y="851" font-size="18">聚會決議。</text>
+      <text x="108" y="897">修繕組</text><text x="108" y="928">弟兄簽名</text>
+      <text x="490" y="897">財務監督</text><text x="490" y="928">弟兄簽名</text>
+      <text x="108" y="985">審核</text><text x="283" y="978">□大區經常費支出</text><text x="283" y="1003">□維修管理費支出</text>
+      <text x="90" y="1045" font-size="19">林前12：12 就如身體是一個，卻有許多肢體，而且身體上一切的肢體雖多，仍是一個身</text>
+      <text x="90" y="1072" font-size="19">體，基督也是這樣。</text></svg>
+    ${UNITS.map((_,i)=>cb('u'+i,283,157+i*25)).join('')}
+    <input type="text" data-k="date" style="${P([690,205,823,250])}" value="${esc(form.date)}" placeholder="　年　月　日" ${ro}>
+    <input type="text" data-k="subject" style="${P([281,313,503,374])}" value="${esc(form.subject)}" ${ro}>
+    <textarea data-k="purpose" style="${P([281,382,819,748])}" ${ro}>${esc(form.purpose)}</textarea>
+    ${cb('e0',283,760)}${cb('e1',283,784)}${cb('a0',283,961)}${cb('a1',283,986)}`;
+  const sg=Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
+    :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
+  return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${sg}</div>`;
+}
+const collect=()=>{const f={};document.querySelectorAll('.paper [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
+const isImg=u=>/\.(jpe?g|png|gif|webp)$/i.test(u);
+const estimates=files=>files.length?`<div class="card est"><b>廠商估價單</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${f.url}" target="_blank">開新分頁</a></p>${isImg(f.url)?`<img src="${f.url}">`:`<iframe src="${f.url}"></iframe>`}`).join('')}</div>`:'<div class="card">（未附估價單）</div>';
+
+/* ---------- 建立頁 ---------- */
+function create(){
+  let mode='fill',bgFile=null,estFiles=[];
+  const draw=()=>{
+    $('#app').innerHTML=`<h1>修繕器材採購申請單</h1>
+    <div class="card"><div class="tabs">
+      <button class="${mode==='fill'?'':'alt'}" id="m1">線上填寫範本</button>
+      <button class="${mode==='upload'?'':'alt'}" id="m2">上傳已填寫的申請單</button></div>
+      ${mode==='upload'?`<div class="row">申請單（PDF 或圖片，第一頁）：<input type="file" id="bg" accept="application/pdf,image/*"></div>`:''}
+      ${mode==='fill'||bgFile?'':'<p>請選擇檔案</p>'}</div>
+    <div id="pv"></div>
+    <div class="card"><div class="row">廠商估價單（PDF 或圖片，可多選）：<input type="file" id="est" accept="application/pdf,image/*" multiple></div>
+      <div id="el">${estFiles.map(f=>esc(f.name)).join('、')}</div></div>
+    <div class="card"><button id="go">建立並產生簽名連結</button> <span class="msg" id="err"></span></div>`;
+    $('#m1').onclick=()=>{mode='fill';draw()};$('#m2').onclick=()=>{mode='upload';draw()};
+    if(mode==='fill')$('#pv').innerHTML=paper({edit:true});
+    if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({bg:window.URL.createObjectURL(bgFile.prev)});
+    if($('#bg'))$('#bg').onchange=async e=>{if(!e.target.files[0])return;$('#err').textContent='處理中…';
+      try{bgFile={src:e.target.files[0],prev:await toImageBlob(e.target.files[0])};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
+    $('#est').onchange=e=>{estFiles=[...estFiles,...e.target.files];$('#el').textContent=estFiles.map(f=>f.name).join('、')};
+    $('#go').onclick=async()=>{
+      const b=$('#go');b.disabled=true;$('#err').textContent='上傳中…';
+      try{
+        if(mode==='upload'&&!bgFile)throw Error('請先上傳申請單');
+        const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
+        const files=[];for(const f of estFiles)files.push({name:f.name,url:await upload(f,ext(f.name))});
+        const id=await rpc('rp_create',{p_form:mode==='fill'?collect():{},p_bg:bgUrl,p_files:files});
+        location.search='?id='+id;
+      }catch(x){$('#err').textContent=x.message;b.disabled=false}
+    };
+  };
+  draw();
+}
+
+/* ---------- 檢視／簽名頁 ---------- */
+async function view(){
+  const d=await rpc('rp_get',{p_id:id});
+  if(!d){$('#app').innerHTML='<p class="msg">找不到這份申請單</p>';return}
+  const mine=role&&ROLES[role]?role:'',signed=d.sigs[mine];
+  let h=`<h1>修繕器材採購申請單</h1>`;
+  if(mine)h+=`<div class="card">您是：<b>${ROLES[mine]}</b>　${signed?'<span class="ok">✔ 已簽名</span>':'請先看完下方申請單與估價單，再於最下方簽名。'}</div>`;
+  else h+=`<div class="card noprint"><b>簽名連結</b>（分別傳給四位簽名人）${Object.entries(ROLES).map(([r,n])=>{
+    const u=`${location.origin}${location.pathname}?id=${id}&r=${r}`;
+    return `<div class="row">${n}　${d.sigs[r]?'<span class="ok">✔ 已簽</span>':'<span class="wait">尚未簽</span>'}<input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>`}).join('')}
+    <div class="row"><button onclick="location.reload()" class="alt">重新整理狀態</button><button onclick="print()">列印／存成 PDF</button></div></div>`;
+  h+=paper({bg:d.bg_url||'',form:d.form,sigs:d.sigs,hl:mine&&!signed?mine:''})+`<div class="noprint">${estimates(d.files)}`;
+  if(mine&&!signed)h+=`<div class="card"><b>簽名</b>（用手指或滑鼠在框內簽名）<canvas id="pad" class="pad" width="900" height="300"></canvas>
+    <div class="row"><button class="alt" id="clr">清除</button><button id="sub">確認簽名並送出</button><span class="msg" id="err"></span></div></div>`;
+  $('#app').innerHTML=h+'</div>';
+  if(mine&&!signed)pad();
+}
+function pad(){
+  const c=$('#pad'),x=c.getContext('2d');let on=false,dirty=false;
+  x.lineWidth=5;x.lineCap=x.lineJoin='round';x.strokeStyle='#111';
+  const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
+  c.onpointerdown=e=>{on=true;dirty=true;c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...pt(e))};
+  c.onpointermove=e=>{if(on){x.lineTo(...pt(e));x.stroke()}};
+  c.onpointerup=()=>on=false;
+  $('#clr').onclick=()=>{x.clearRect(0,0,c.width,c.height);dirty=false};
+  $('#sub').onclick=async()=>{
+    if(!dirty){$('#err').textContent='請先簽名';return}
+    $('#sub').disabled=true;
+    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:c.toDataURL('image/png')});view()}
+    catch(e){$('#err').textContent=e.message;$('#sub').disabled=false}
+  };
+}
+
+const q=new URLSearchParams(location.search),id=q.get('id'),role=q.get('r');
+(id?view():create());
+</script>
+</body>
+</html>
