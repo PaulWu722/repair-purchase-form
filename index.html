@@ -147,6 +147,7 @@ function create(){
       const b=$('#go');b.disabled=true;$('#err').textContent='上傳中…';
       try{
         if(mode==='upload'&&!bgFile)throw Error('請先上傳申請單');
+        if(!estFiles.length)throw Error('請至少上傳一份廠商估價單');
         const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
         const files=[];for(const o of estFiles){const f=await fromHeic(o);files.push({name:f.name,url:await upload(f,ext(f.name))})}
         const id=await rpc('rp_create',{p_form:collect(),p_bg:bgUrl,p_files:files});
