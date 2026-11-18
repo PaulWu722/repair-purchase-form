@@ -194,7 +194,7 @@ function menu(){
     ['🔧','修繕器材採購申請單','弟兄姊妹之家、會所的修繕與器材採購。附廠商估價單，由專項聯絡人、同工、修繕組、財務監督簽名。','?f=repair'],
     ['🧾','支出結報單（黃單）','支出結報。發起者填寫全部欄位並簽「經手人（一）」，其餘由經手人（二）、區負責、長老/負責弟兄、財務監督、會計、出納簽名。','?f=huang'],
     ['📊','預算單','敬請期待。','']];
-  $('#app').innerHTML=`<div class="hero"><small>財團法人台灣省台中市召會</small><h1>表單中心</h1><p>選擇要產生的表單，建立後只要傳<b>一條連結</b>給簽名人，他們進去自己選身份簽名，簽名會自動貼到表單上。</p></div>
+  $('#app').innerHTML=`<div class="hero"><small>財團法人台灣省台中市召會</small><h1>各項簽名單據</h1><p>選擇要產生的表單，建立後只要傳<b>一條連結</b>給簽名人，他們進去自己選身份簽名，簽名會自動貼到表單上。</p></div>
     <div class="steps"><div><b>①</b> 選表單</div><div><b>②</b> 填寫／上傳</div><div><b>③</b> 傳一條連結</div><div><b>④</b> 簽名人簽名</div><div><b>⑤</b> 列印 PDF</div></div>`
     +items.map(([i,n,d,h])=>h
     ?`<a class="card menu" href="${h}"><span class="ic">${i}</span><span class="tx">${n}<em>${d}</em></span><small>開始 →</small></a>`
