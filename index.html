@@ -110,7 +110,7 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
       <text x="108" y="985">審核</text><text x="283" y="978">□大區經常費支出</text><text x="283" y="1003">□維修管理費支出</text>
       <text x="90" y="1045" font-size="19">林前12：12 就如身體是一個，卻有許多肢體，而且身體上一切的肢體雖多，仍是一個身</text>
       <text x="90" y="1072" font-size="19">體，基督也是這樣。</text></svg>
-    <input type="text" data-k="subject" style="${P([281,313,503,374])}" value="${esc(form.subject)}" ${ro}>
+    <textarea data-k="subject" style="${P([281,313,503,374])};font-size:calc(18/920*100cqw);padding:.15em .3em" ${ro}>${esc(form.subject)}</textarea>
     <textarea data-k="purpose" style="${P([281,382,819,748])}" ${ro}>${esc(form.purpose)}</textarea>
     `;
   const dt=(k,a,b,n)=>`<input type="text" class="dt" maxlength="${n}" data-k="${k}" style="${P([a,213,b,250])}" value="${esc(form[k])}" ${ro}>`;
@@ -119,19 +119,20 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
     :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
   return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${est}${sg}</div>`;
 }
-const collect=()=>{const f={};document.querySelectorAll('.paper [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
+const collect=()=>{const f={};document.querySelectorAll('#app [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
 const isImg=u=>/\.(jpe?g|png|gif|webp)$/i.test(u);
 const estimates=files=>files.length?`<div class="card est"><b>廠商估價單</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${f.url}" target="_blank">開新分頁</a></p>${isImg(f.url)?`<img src="${f.url}">`:`<iframe src="${f.url}"></iframe>`}`).join('')}</div>`:'<div class="card">（未附估價單）</div>';
 
 /* ---------- 建立頁 ---------- */
 function create(){
-  let mode='fill',bgFile=null,estFiles=[];
+  let mode='fill',bgFile=null,estFiles=[],subj='';
   const draw=()=>{
     $('#app').innerHTML=`<h1>修繕器材採購申請單</h1>
     <div class="card"><div class="tabs">
       <button class="${mode==='fill'?'':'alt'}" id="m1">線上填寫範本</button>
       <button class="${mode==='upload'?'':'alt'}" id="m2">上傳已填寫的申請單</button></div>
-      ${mode==='upload'?`<div class="row">申請單（PDF 或圖片，第一頁）：<input type="file" id="bg" accept="application/pdf,image/*"></div>`:''}
+      ${mode==='upload'?`<div class="row">申請單（PDF 或圖片，第一頁）：<input type="file" id="bg" accept="application/pdf,image/*"></div>
+        <div class="row">修繕/採購標的（做為連結標題）：<input type="text" data-k="subject" id="subj" value="${esc(subj)}"></div>`:''}
       ${mode==='fill'||bgFile?'':'<p>請選擇檔案</p>'}</div>
     <div id="pv"></div>
     <div class="card"><div class="row">廠商估價單（PDF 或圖片，可多選）：<input type="file" id="est" accept="application/pdf,image/*" multiple></div>
@@ -140,6 +141,7 @@ function create(){
     $('#m1').onclick=()=>{mode='fill';draw()};$('#m2').onclick=()=>{mode='upload';draw()};
     if(mode==='fill')$('#pv').innerHTML=paper({edit:true});
     if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,bg:window.URL.createObjectURL(bgFile.prev)});
+    if($('#subj'))$('#subj').oninput=e=>subj=e.target.value;
     if($('#bg'))$('#bg').onchange=async e=>{if(!e.target.files[0])return;$('#err').textContent='處理中…';
       try{const f=await fromHeic(e.target.files[0]);bgFile={src:f,prev:await toImageBlob(f)};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
     $('#est').onchange=e=>{estFiles=[...estFiles,...e.target.files];$('#el').textContent=estFiles.map(f=>f.name).join('、')};
@@ -162,13 +164,14 @@ function create(){
 async function view(){
   const d=await rpc('rp_get',{p_id:id});
   if(!d){$('#app').innerHTML='<p class="msg">找不到這份申請單</p>';return}
+  window.SUBJ=(d.form.subject||'').trim();
   const mine=role&&ROLES[role]?role:'',signed=d.sigs[mine];
   let h=`<h1>修繕器材採購申請單</h1>`;
   if(mine)h+=`<div class="card">您是：<b>${ROLES[mine]}</b>　${signed?'<span class="ok">✔ 已簽名</span>':'請先看完下方申請單與估價單，再於最下方簽名。'}</div>`;
   else h+=`<div class="card noprint"><b>簽名連結</b>（分別傳給四位簽名人）${Object.entries(ROLES).map(([r,n])=>{
     const u=`${location.origin}${location.pathname}?id=${id}&r=${r}`;
     return `<div class="row">${n}　${d.sigs[r]?'<span class="ok">✔ 已簽</span>':'<span class="wait">尚未簽</span>'}<input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>`}).join('')}
-    <div class="row"><button onclick="copyAll(this)">一鍵複製全部 5 組連結</button></div>
+    <div class="row"><button onclick="copyAll(this,SUBJ)">一鍵複製全部 5 組連結</button></div>
     <div class="row"><button onclick="location.reload()" class="alt">重新整理狀態</button><button onclick="print()">列印／存成 PDF</button></div></div>`;
   h+=paper({bg:d.bg_url||'',form:d.form,sigs:d.sigs,hl:mine&&!signed?mine:''})+`<div class="noprint">${estimates(d.files)}`;
   if(mine&&!signed)h+=`<div class="card"><b>簽名</b>（用手指或滑鼠在框內簽名）<canvas id="pad" class="pad" width="900" height="300"></canvas>
@@ -176,9 +179,9 @@ async function view(){
   $('#app').innerHTML=h+'</div>';
   if(mine&&!signed)pad();
 }
-function copyAll(b){
+function copyAll(b,title){
   const base=`${location.origin}${location.pathname}?id=${id}`;
-  navigator.clipboard.writeText([`我的連結（總覽）：${base}`,...Object.entries(ROLES).map(([r,n])=>`${n}：${base}&r=${r}`)].join('\n'));
+  navigator.clipboard.writeText([`${title}修繕申請`,`我的連結${base}`,...Object.entries(ROLES).map(([r,n])=>`${n}：${base}&r=${r}`)].join('\n'));
   b.textContent='已複製 ✔';
 }
 function pad(){
