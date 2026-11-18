@@ -97,12 +97,11 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
       <text x="108" y="985">審核</text><text x="283" y="978">□大區經常費支出</text><text x="283" y="1003">□維修管理費支出</text>
       <text x="90" y="1045" font-size="19">林前12：12 就如身體是一個，卻有許多肢體，而且身體上一切的肢體雖多，仍是一個身</text>
       <text x="90" y="1072" font-size="19">體，基督也是這樣。</text></svg>
-    ${UNITS.map((_,i)=>cb('u'+i,283,157+i*25)).join('')}
     <input type="text" data-k="date" style="${P([690,205,823,250])}" value="${esc(form.date)}" placeholder="　年　月　日" ${ro}>
     <input type="text" data-k="subject" style="${P([281,313,503,374])}" value="${esc(form.subject)}" ${ro}>
     <textarea data-k="purpose" style="${P([281,382,819,748])}" ${ro}>${esc(form.purpose)}</textarea>
     ${cb('a0',283,961)}${cb('a1',283,986)}`;
-  const est=cb('e0',283,760)+cb('e1',283,784);
+  const est=UNITS.map((_,i)=>cb('u'+i,283,157+i*25)).join('')+cb('e0',283,760)+cb('e1',283,784);
   const sg=Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
     :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
   return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${est}${sg}</div>`;
