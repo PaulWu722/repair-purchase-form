@@ -15,6 +15,7 @@ h1{font-size:22px;margin:8px 0 12px}
 button,.btn{font:inherit;padding:8px 16px;border:0;border-radius:8px;background:#2f6f4f;color:#fff;cursor:pointer}
 button.alt{background:#e4e4df;color:#222}
 button:disabled{opacity:.5}
+.menu{display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:700;padding:22px 20px;color:#222;text-decoration:none}.menu small{font-size:14px;font-weight:400;color:#2f6f4f}.menu.off{opacity:.55}.menu.off small{color:#888}
 .tabs{display:flex;gap:8px;margin-bottom:10px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
 .row input[type=text]{flex:1;min-width:200px;font:inherit;padding:6px}
@@ -123,11 +124,18 @@ const collect=()=>{const f={};document.querySelectorAll('#app [data-k]').forEach
 const isImg=u=>/\.(jpe?g|png|gif|webp)$/i.test(u);
 const estimates=files=>files.length?`<div class="card est"><b>廠商估價單</b>${files.map(f=>`<p>${esc(f.name)}　<a href="${f.url}" target="_blank">開新分頁</a></p>${isImg(f.url)?`<img src="${f.url}">`:`<iframe src="${f.url}"></iframe>`}`).join('')}</div>`:'<div class="card">（未附估價單）</div>';
 
+/* ---------- 選單頁 ---------- */
+function menu(){
+  const items=[['修繕器材採購申請單','?f=repair',1],['黃單','',0],['預算單','',0]];
+  $('#app').innerHTML=`<h1>請選擇要產生的表單</h1>`+items.map(([n,h,on])=>on
+    ?`<a class="card menu" href="${h}">${n}<small>點此開始</small></a>`
+    :`<div class="card menu off">${n}<small>即將推出</small></div>`).join('');
+}
 /* ---------- 建立頁 ---------- */
 function create(){
   let mode='fill',bgFile=null,estFiles=[],subj='';
   const draw=()=>{
-    $('#app').innerHTML=`<h1>修繕器材採購申請單</h1>
+    $('#app').innerHTML=`<p class="noprint"><a href="./">← 回選單</a></p><h1>修繕器材採購申請單</h1>
     <div class="card"><div class="tabs">
       <button class="${mode==='fill'?'':'alt'}" id="m1">線上填寫範本</button>
       <button class="${mode==='upload'?'':'alt'}" id="m2">上傳已填寫的申請單</button></div>
@@ -201,7 +209,7 @@ function pad(){
 }
 
 const q=new URLSearchParams(location.search),id=q.get('id'),role=q.get('r');
-(id?view():create());
+(id?view():q.get('f')==='repair'?create():menu());
 </script>
 </body>
 </html>
