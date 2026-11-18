@@ -200,7 +200,7 @@ async function view(){
 function setRole(r){role=r;view()}
 function copyAll(b,title){
   const base=`${location.origin}${location.pathname}?id=${id}`;
-  navigator.clipboard.writeText(`${title}修繕申請\n我的連結${base}\n簽名人連結${base}&s=1`);
+  navigator.clipboard.writeText(`${title}修繕申請\n\n我的連結：\n${base}\n\n簽名人連結：\n${base}&s=1`);
   b.textContent='已複製 ✔';
 }
 function pad(){
