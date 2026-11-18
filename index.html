@@ -173,23 +173,34 @@ async function view(){
   const d=await rpc('rp_get',{p_id:id});
   if(!d){$('#app').innerHTML='<p class="msg">找不到這份申請單</p>';return}
   window.SUBJ=(d.form.subject||'').trim();
+  const lock=localStorage.getItem('rp_'+id); // 這個瀏覽器簽過就鎖定該身份
+  if(lock&&ROLES[lock]&&(pick||role))role=lock; // 總覽連結不受鎖定影響
+  if(pick&&!role){ // 簽名人入口：先選身份
+    $('#app').innerHTML=`<h1>修繕器材採購申請單</h1><div class="card"><b>請選擇您的身份</b>（選了之後，簽名完成就不能再簽其他身份）
+      ${Object.entries(ROLES).map(([r,n])=>d.sigs[r]?`<div class="card menu off">${n}<small>已簽名</small></div>`:`<button class="card menu" style="width:100%;border:0;font:inherit;font-weight:700" onclick="setRole('${r}')">${n}<small>我是${n}</small></button>`).join('')}</div>`;
+    return;
+  }
   const mine=role&&ROLES[role]?role:'',signed=d.sigs[mine];
   let h=`<h1>修繕器材採購申請單</h1>`;
   if(mine)h+=`<div class="card">您是：<b>${ROLES[mine]}</b>　${signed?'<span class="ok">✔ 已簽名</span>':'請先看完下方申請單與估價單，再於最下方簽名。'}</div>`;
-  else h+=`<div class="card noprint"><b>簽名連結</b>（分別傳給四位簽名人）${Object.entries(ROLES).map(([r,n])=>{
-    const u=`${location.origin}${location.pathname}?id=${id}&r=${r}`;
-    return `<div class="row">${n}　${d.sigs[r]?'<span class="ok">✔ 已簽</span>':'<span class="wait">尚未簽</span>'}<input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>`}).join('')}
-    <div class="row"><button onclick="copyAll(this,SUBJ)">一鍵複製全部 5 組連結</button></div>
+  else{
+    const u=`${location.origin}${location.pathname}?id=${id}&s=1`;
+    h+=`<div class="card noprint"><b>簽名人連結</b>（只要傳這一條給四位簽名人，他們進去後自己選身份）
+    <div class="row"><input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>
+    <div class="row">${Object.entries(ROLES).map(([r,n])=>`${n} ${d.sigs[r]?'<span class="ok">✔ 已簽</span>':'<span class="wait">尚未簽</span>'}`).join('　')}</div>
+    <div class="row"><button onclick="copyAll(this,SUBJ)">一鍵複製 2 組連結</button></div>
     <div class="row"><button onclick="location.reload()" class="alt">重新整理狀態</button><button onclick="print()">列印／存成 PDF</button></div></div>`;
+  }
   h+=paper({bg:d.bg_url||'',form:d.form,sigs:d.sigs,hl:mine&&!signed?mine:''})+`<div class="noprint">${estimates(d.files)}`;
   if(mine&&!signed)h+=`<div class="card"><b>簽名</b>（用手指或滑鼠在框內簽名）<canvas id="pad" class="pad" width="900" height="300"></canvas>
     <div class="row"><button class="alt" id="clr">清除</button><button id="sub">確認簽名並送出</button><span class="msg" id="err"></span></div></div>`;
   $('#app').innerHTML=h+'</div>';
   if(mine&&!signed)pad();
 }
+function setRole(r){role=r;view()}
 function copyAll(b,title){
   const base=`${location.origin}${location.pathname}?id=${id}`;
-  navigator.clipboard.writeText([`${title}修繕申請`,`我的連結${base}`,...Object.entries(ROLES).map(([r,n])=>`${n}：${base}&r=${r}`)].join('\n'));
+  navigator.clipboard.writeText(`${title}修繕申請\n我的連結${base}\n簽名人連結${base}&s=1`);
   b.textContent='已複製 ✔';
 }
 function pad(){
@@ -203,12 +214,12 @@ function pad(){
   $('#sub').onclick=async()=>{
     if(!dirty){$('#err').textContent='請先簽名';return}
     $('#sub').disabled=true;
-    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:c.toDataURL('image/png')});view()}
+    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:c.toDataURL('image/png')});localStorage.setItem('rp_'+id,role);view()}
     catch(e){$('#err').textContent=e.message;$('#sub').disabled=false}
   };
 }
 
-const q=new URLSearchParams(location.search),id=q.get('id'),role=q.get('r');
+let q=new URLSearchParams(location.search),id=q.get('id'),role=q.get('r'),pick=q.get('s');
 (id?view():q.get('f')==='repair'?create():menu());
 </script>
 </body>
