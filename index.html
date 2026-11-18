@@ -101,10 +101,11 @@ function paper({edit=false,bg='',form={},sigs={},hl=''}={}){
     <input type="text" data-k="date" style="${P([690,205,823,250])}" value="${esc(form.date)}" placeholder="　年　月　日" ${ro}>
     <input type="text" data-k="subject" style="${P([281,313,503,374])}" value="${esc(form.subject)}" ${ro}>
     <textarea data-k="purpose" style="${P([281,382,819,748])}" ${ro}>${esc(form.purpose)}</textarea>
-    ${cb('e0',283,760)}${cb('e1',283,784)}${cb('a0',283,961)}${cb('a1',283,986)}`;
+    ${cb('a0',283,961)}${cb('a1',283,986)}`;
+  const est=cb('e0',283,760)+cb('e1',283,784);
   const sg=Object.keys(ROLES).map(r=>sigs[r]?`<img class="sig" style="${P(SLOT[r])}" src="${sigs[r]}">`
     :r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:'').join('');
-  return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${sg}</div>`;
+  return `<div class="paper">${bg?`<img class="bg" src="${bg}">`:''}${fields}${est}${sg}</div>`;
 }
 const collect=()=>{const f={};document.querySelectorAll('.paper [data-k]').forEach(e=>f[e.dataset.k]=e.type==='checkbox'?e.checked:e.value);return f};
 const isImg=u=>/\.(jpe?g|png|gif|webp)$/i.test(u);
@@ -126,7 +127,7 @@ function create(){
     <div class="card"><button id="go">建立並產生簽名連結</button> <span class="msg" id="err"></span></div>`;
     $('#m1').onclick=()=>{mode='fill';draw()};$('#m2').onclick=()=>{mode='upload';draw()};
     if(mode==='fill')$('#pv').innerHTML=paper({edit:true});
-    if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({bg:window.URL.createObjectURL(bgFile.prev)});
+    if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,bg:window.URL.createObjectURL(bgFile.prev)});
     if($('#bg'))$('#bg').onchange=async e=>{if(!e.target.files[0])return;$('#err').textContent='處理中…';
       try{bgFile={src:e.target.files[0],prev:await toImageBlob(e.target.files[0])};$('#err').textContent='';draw()}catch(x){$('#err').textContent=x.message}};
     $('#est').onchange=e=>{estFiles=[...estFiles,...e.target.files];$('#el').textContent=estFiles.map(f=>f.name).join('、')};
@@ -136,7 +137,7 @@ function create(){
         if(mode==='upload'&&!bgFile)throw Error('請先上傳申請單');
         const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
         const files=[];for(const f of estFiles)files.push({name:f.name,url:await upload(f,ext(f.name))});
-        const id=await rpc('rp_create',{p_form:mode==='fill'?collect():{},p_bg:bgUrl,p_files:files});
+        const id=await rpc('rp_create',{p_form:collect(),p_bg:bgUrl,p_files:files});
         location.search='?id='+id;
       }catch(x){$('#err').textContent=x.message;b.disabled=false}
     };
