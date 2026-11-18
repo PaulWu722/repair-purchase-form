@@ -75,6 +75,7 @@ button,.btn{background:#2a2118;border-radius:6px;color:#fffdf8}button.alt{backgr
 a.menu:hover{box-shadow:none;border-color:#b4492a;transform:none}.menu{font-size:20px;font-weight:600}.menu small{font-family:inherit}.foot{font-family:inherit}
 .row input[type=text]{border-radius:6px;border-color:#d9cdb8}
 .ok{color:#2f6f4f}.wait{color:#a8681c}
+button.card{background:#fffdf8;color:#2a2118;border:1px solid #e0d6c4!important;border-radius:6px;cursor:pointer}button.card:hover{border-color:#b4492a!important}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Geist+Mono:wght@400;500&family=Inter:wght@400&display=swap">
 </head>
@@ -85,11 +86,11 @@ const UNITS=['高中弟兄姊妹之家','大專弟兄姊妹之家','青職弟兄
 const DIG=['佰','拾','萬','仟','佰','拾','元整'];
 // 各表單設定。slot 為簽名位置 [x1,y1,x2,y2]（該表單座標空間）
 const FORMS={
-  repair:{kind:'repair',name:'修繕器材採購申請單',W:920,H:1301,pw:'210mm',ph:'297mm',page:'A4',title:'subject',titleLabel:'修繕/採購標的',suffix:'修繕申請',
+  repair:{kind:'repair',auth:true,name:'修繕器材採購申請單',W:920,H:1301,pw:'210mm',ph:'297mm',page:'A4',title:'subject',titleLabel:'修繕/採購標的',suffix:'修繕申請',
     est:{label:'廠商估價單',required:true},stamp:10,
     roles:{contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'},
     slot:{contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]}},
-  huang:{kind:'huang',name:'支出結報單（黃單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
+  huang:{kind:'huang',auth:false,name:'支出結報單（黃單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
     est:{label:'單據／發票（選填）',required:false},stamp:24,
     first:'handler1', // 發起者只能簽這一格
     roles:{handler1:'經手人（一）',handler2:'經手人（二）',area:'區負責',elder:'長老/負責弟兄',finance:'財務監督',accounting:'會計核銷',cashier:'出納'},
@@ -255,15 +256,15 @@ function sigPad(c,clr){
 /* ---------- 選單頁 ---------- */
 function menu(){
   const items=[
-    ['🔧','修繕器材採購申請單','弟兄姊妹之家、會所的修繕與器材採購。附廠商估價單，由專項聯絡人、同工、修繕組、財務監督簽名。','?f=repair'],
-    ['🧾','支出結報單（黃單）','支出結報。發起者填寫全部欄位並簽「經手人（一）」，其餘由經手人（二）、區負責、長老/負責弟兄、財務監督、會計、出納簽名。','?f=huang'],
+    ['🔧','修繕器材採購申請單','弟兄姊妹之家、會所的修繕與器材採購。附廠商估價單，由專項聯絡人、同工、修繕組、財務監督簽名（LINE 登入驗證身份）。','?f=repair'],
+    ['🧾','支出結報單（黃單）','支出結報。發起者填寫全部欄位並簽「經手人（一）」，其餘由經手人（二）、區負責、長老/負責弟兄、財務監督、會計、出納自己選身份簽名（不驗證）。','?f=huang'],
     ['📊','預算單','敬請期待。','']];
-  $('#app').innerHTML=`<div class="hero"><small>財團法人台灣省台中市召會</small><h1>各項簽名單據</h1><p>選擇要產生的表單，建立後只要傳<b>一條連結</b>給簽名人。簽名人用 <b>LINE</b> 登入確認身份，只能簽被指定給自己的欄位，簽名會自動貼到表單上。</p></div>
+  $('#app').innerHTML=`<div class="hero"><small>財團法人台灣省台中市召會</small><h1>各項簽名單據</h1><p>選擇要產生的表單，建立後只要傳<b>一條連結</b>給簽名人。簽名會自動貼到表單上。修繕單的簽名人要用 <b>LINE</b> 登入確認身份；黃單和預算單不驗證身份，簽名人自己選身份即可。</p></div>
     <div class="steps"><div><b>①</b> 選表單</div><div><b>②</b> 填寫／上傳</div><div><b>③</b> 傳一條連結</div><div><b>④</b> 簽名人簽名</div><div><b>⑤</b> 列印 PDF</div></div>`
     +items.map(([i,n,d,h])=>h
     ?`<a class="card menu" href="${h}"><span class="ic">${i}</span><span class="tx">${n}<em>${d}</em></span><small>開始 →</small></a>`
     :`<div class="card menu off"><span class="ic">${i}</span><span class="tx">${n}<em>${d}</em></span><small>即將推出</small></div>`).join('')
-    +`<p class="foot">簽名送出後不能修改。　<a href="?admin=1">成員管理</a></p>`;
+    +`<p class="foot">簽名送出後不能修改。　<a href="?admin=1">成員管理（修繕單）</a></p>`;
 }
 /* ---------- 成員管理（管理員） ---------- */
 async function admin(){
@@ -283,8 +284,8 @@ async function admin(){
 const adm=async(i,a,u)=>{await rpc('rp_admin_set',{p_token:TOKEN,p_id:i,p_active:a,p_unbind:u});admin()};
 /* ---------- 建立頁 ---------- */
 async function create(){
-  if(!await gate())return;
-  const members=await rpc('rp_members_list',{p_token:TOKEN});
+  if(F.auth&&!await gate())return;
+  const members=F.auth?await rpc('rp_members_list',{p_token:TOKEN}):[];
   let mode='fill',bgFile=null,estFiles=[],subj='',getSig=null,saved={},asg={};
   const getAsg=()=>{const a={};document.querySelectorAll('[data-asg]').forEach(e=>{if(e.value)a[e.dataset.asg]=e.value});return a};
   // 修繕單的身份只能由名單上對應的人簽；黃單暫不限名單
@@ -299,9 +300,9 @@ async function create(){
         <div class="row">${F.titleLabel}（做為連結標題）：<input type="text" data-k="${F.title}" id="subj" value="${esc(subj)}"></div>`:''}
       ${mode==='fill'||bgFile?'':'<p>請選擇檔案</p>'}</div>
     <div id="pv"></div>
-    <div class="card"><b>指定簽名人</b>（只有被指定的人能簽；選「不指定」則名單內任何一位符合資格的人都可簽）
-      ${Object.entries(ROLES).filter(([r])=>r!==F.first).map(([r,n])=>{const c=cand(r),v=asg[r]??(c.length===1?c[0].id:'');return `<div class="row"><span style="min-width:9em">${n}</span><select data-asg="${r}" style="font:inherit;padding:6px;border-radius:10px"><option value="">不指定</option>${c.map(m=>`<option value="${m.id}" ${v===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div>`}).join('')}</div>
-    ${F.first?`<div class="card"><b>${ROLES[F.first]}簽名</b>（發起者：${esc(ME.name)}。只能簽這一格，其他欄位由簽名人用 LINE 登入後簽）<canvas id="pad1" class="pad" width="900" height="300"></canvas>
+    ${F.auth?`<div class="card"><b>指定簽名人</b>（只有被指定的人能簽；選「不指定」則名單內任何一位符合資格的人都可簽）
+      ${Object.entries(ROLES).filter(([r])=>r!==F.first).map(([r,n])=>{const c=cand(r),v=asg[r]??(c.length===1?c[0].id:'');return `<div class="row"><span style="min-width:9em">${n}</span><select data-asg="${r}" style="font:inherit;padding:6px;border-radius:10px"><option value="">不指定</option>${c.map(m=>`<option value="${m.id}" ${v===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div>`}).join('')}</div>`:''}
+    ${F.first?`<div class="card"><b>${ROLES[F.first]}簽名</b>（${ME?'發起者：'+esc(ME.name)+'。':''}只能簽這一格，其他欄位由簽名人${F.auth?'用 LINE 登入':''}後簽）<canvas id="pad1" class="pad" width="900" height="300"></canvas>
       <div class="row"><button class="alt" id="clr1">清除</button></div></div>`:''}
     <div class="card"><div class="row">${F.est.label}（PDF 或圖片，可多選）：<input type="file" id="est" accept="application/pdf,image/*" multiple></div>
       <div id="el">${estFiles.map(f=>esc(f.name)).join('、')}</div></div>
@@ -329,7 +330,7 @@ async function create(){
         if(F.est.required&&!estFiles.length)throw Error('請至少上傳一份'+F.est.label);
         const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
         const files=[];for(const o of estFiles){const f=await fromHeic(o);files.push({name:f.name,url:await upload(f,ext(f.name))})}
-        const id=await rpc('rp_create',{p_form:form,p_bg:bgUrl,p_files:files,p_assign:getAsg(),p_img:F.first?getSig():null,p_token:TOKEN});
+        const id=await rpc('rp_create',{p_form:form,p_bg:bgUrl,p_files:files,p_assign:getAsg(),p_img:F.first?getSig():null,p_token:TOKEN||null});
         location.search='?id='+id;
       }catch(x){$('#err').textContent=x.message;b.disabled=false}
     };
@@ -343,25 +344,26 @@ async function view(){
   if(!d){$('#app').innerHTML='<p class="msg">找不到這份申請單</p>';return}
   setForm(d.form._kind);
   window.SUBJ=(d.form[F.title]||'').trim();
-  if((pick||role)&&!await gate())return;
+  if((pick||role)&&F.auth&&!await gate())return;
   const sg=d.signers||{},as=d.assign||{};
   // 這個人能不能簽這個身份：已有人簽→不能；有指定→只有被指定的人；沒指定→修繕單看名單資格，黃單不限
-  const canSign=r=>ME&&!d.sigs[r]&&(as[r]?as[r].id===ME.id:(F.kind==='repair'?(ME.can||[]).includes(r):true));
-  const myDone=ME&&Object.keys(sg).find(r=>sg[r].id===ME.id);
-  if(ME&&myDone&&(pick||role)&&role!==myDone)role=myDone; // 這張單已簽過，就只看自己那一格
+  const canSign=r=>F.auth?ME&&!d.sigs[r]&&(as[r]?as[r].id===ME.id:(ME.can||[]).includes(r)):!d.sigs[r]; // 只有修繕單驗證身份
+  const lk=localStorage.getItem('rp_'+id);
+  const myDone=F.auth?(ME&&Object.keys(sg).find(r=>sg[r].id===ME.id)):(ROLES[lk]?lk:null); // 不驗證的表單：用本機瀏覽器記住簽過的身份
+  if(myDone&&(pick||role)&&role!==myDone)role=myDone; // 這張單已簽過，就只看自己那一格
   if(pick&&!role){ // 簽名人入口：依 LINE 身份列出能簽的身份
     const opts=Object.keys(ROLES).filter(canSign);
-    if(opts.length===1){role=opts[0]}else{
-    $('#app').innerHTML=whoBar()+`<h1>${F.name}</h1><div class="card"><b>${esc(ME.name)}，請選擇要簽的身份</b>（每人在同一張單只能簽一個身份，簽完不能修改）
-      ${Object.entries(ROLES).map(([r,n])=>canSign(r)?`<button class="card menu" style="width:100%;border:0;font:inherit;font-weight:700" onclick="setRole('${r}')">${n}<small>我要簽</small></button>`:`<div class="card menu off">${n}<small>${sg[r]?'已簽：'+esc(sg[r].name||''):as[r]?'指定：'+esc(as[r].name):'無權限'}</small></div>`).join('')}</div>`;
+    if(F.auth&&opts.length===1){role=opts[0]}else{
+    $('#app').innerHTML=whoBar()+`<h1>${F.name}</h1><div class="card">${F.auth?`<b>${esc(ME.name)}，請選擇要簽的身份</b>（每人在同一張單只能簽一個身份，簽完不能修改）`:'<b>請選擇您的身份</b>（選了之後，簽名完成就不能再簽其他身份）'}
+      ${Object.entries(ROLES).map(([r,n])=>canSign(r)?`<button class="card menu" style="width:100%;border:0;font:inherit;font-weight:700" onclick="setRole('${r}')">${n}<small>我要簽</small></button>`:`<div class="card menu off">${n}<small>${d.sigs[r]?'已簽名'+(sg[r]?.name?'：'+esc(sg[r].name):''):as[r]?'指定：'+esc(as[r].name):'無權限'}</small></div>`).join('')}</div>`;
     return}
   }
   const mine=role&&ROLES[role]?role:'',signed=d.sigs[mine],ok=mine&&canSign(mine);
   let h=`<h1>${F.name}</h1>`;
-  if(mine)h+=whoBar()+`<div class="card">您是：<b>${esc(ME?.name)}</b>（${ROLES[mine]}）　${signed?'<span class="ok">✔ 已簽名</span>':ok?'請先看完下方表單與附件，再於最下方簽名。':`<span class="msg">這個身份${as[mine]?'指定給 '+esc(as[mine].name):'你沒有簽名權限'}，無法簽名。</span>`}</div>`;
+  if(mine)h+=whoBar()+`<div class="card">您是：${ME?`<b>${esc(ME.name)}</b>（${ROLES[mine]}）`:`<b>${ROLES[mine]}</b>`}　${signed?'<span class="ok">✔ 已簽名</span>':ok?'請先看完下方表單與附件，再於最下方簽名。':`<span class="msg">這個身份${as[mine]?'指定給 '+esc(as[mine].name):'你沒有簽名權限'}，無法簽名。</span>`}</div>`;
   else{
     const u=`${location.origin}${location.pathname}?id=${id}&s=1`;
-    h+=`<div class="card noprint"><b>簽名人連結</b>（只要傳這一條給所有簽名人；他們用 LINE 登入，只能簽被指定給自己的身份）
+    h+=`<div class="card noprint"><b>簽名人連結</b>（只要傳這一條給所有簽名人；${F.auth?'他們用 LINE 登入，只能簽被指定給自己的身份':'他們進去後自己選身份'}）
     <div class="row"><input type="text" readonly value="${u}"><button class="alt" onclick="navigator.clipboard.writeText('${u}');this.textContent='已複製'">複製</button></div>
     <div class="row">${Object.entries(ROLES).map(([r,n])=>`${n}${as[r]?'（'+esc(as[r].name)+'）':''} ${d.sigs[r]?`<span class="ok">✔ ${esc(sg[r]?.name||'已簽')}</span>`:'<span class="wait">尚未簽</span>'}`).join('　')}</div>
     ${F.hint&&F.hint(d.form)?`<div class="row wait">${F.hint(d.form)}</div>`:''}
@@ -378,7 +380,7 @@ async function view(){
 function setRole(r){role=r;view()}
 function copyAll(b,title){
   const base=`${location.origin}${location.pathname}?id=${id}`;
-  navigator.clipboard.writeText(`${title}${F.suffix}\n\n我的連結：\n${base}\n\n簽名人連結（請用 LINE 登入簽名）：\n${base}&s=1`);
+  navigator.clipboard.writeText(`${title}${F.suffix}\n\n我的連結：\n${base}\n\n簽名人連結${F.auth?'（請用 LINE 登入簽名）':''}：\n${base}&s=1`);
   b.textContent='已複製 ✔';
 }
 function pad(){
@@ -386,7 +388,7 @@ function pad(){
   $('#sub').onclick=async()=>{
     const img=get();if(!img){$('#err').textContent='請先簽名';return}
     $('#sub').disabled=true;
-    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:img,p_token:TOKEN});view()}
+    try{await rpc('rp_sign',{p_id:id,p_role:role,p_img:img,p_token:TOKEN||null});if(!F.auth)localStorage.setItem('rp_'+id,role);view()}
     catch(e){$('#err').textContent=e.message;$('#sub').disabled=false}
   };
 }
