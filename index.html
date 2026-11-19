@@ -92,9 +92,9 @@ const FORMS={
     slot:{contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]}},
   budget:{kind:'budget',auth:false,name:'預算單',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'title',titleLabel:'預算單名稱',suffix:' 預算單簽名',
     est:{label:'明細附件（選填）',required:false},stamp:20,
-    roles:{contact:'專項聯絡人',supervisor:'專項監督'},
-    slot:{contact:[644,1239,956,1306],supervisor:[1184,1239,1496,1306]}, // 線上填寫版面
-    slotUp:{contact:[966,811,1104,892],supervisor:[1273,811,1412,892]}, // 上傳 2027 上半年大專預算 PDF 第一頁時的位置
+    roles:{contact:'專項聯絡人（一）',contact2:'專項聯絡人（二）',supervisor:'專項監督'}, // 專項聯絡人需要兩位簽名
+    slot:{contact:[644,1239,800,1306],contact2:[800,1239,956,1306],supervisor:[1184,1239,1496,1306]}, // 線上填寫版面
+    slotUp:{contact:[966,811,1104,851],contact2:[966,851,1104,892],supervisor:[1273,811,1412,892]}, // 上傳 2027 上半年大專預算 PDF 第一頁時的位置
     hint(f){const t=f.total;return t?`預算合計 NT$ ${t}`:''}},
   huang:{kind:'huang',auth:false,name:'支出結報單（黃單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
     est:{label:'單據／發票（選填）',required:false},stamp:24,
@@ -178,7 +178,7 @@ const stampText=iso=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB'
 let TIMES={};
 const sigLayer=(sigs,hl,S=SLOT)=>Object.keys(ROLES).map(r=>{
   if(sigs[r]){
-    const [x1,,x2,y2]=S[r],sz=F.stamp,t=TIMES[r]?`<div class="stamp" style="${P([x1,y2-sz*1.6,x2-sz*.3,y2])};font-size:calc(${sz}*var(--u))">${stampText(TIMES[r])}</div>`:'';
+    const [x1,,x2,y2]=S[r],sz=S===F.slotUp?12:F.stamp,t=TIMES[r]?`<div class="stamp" style="${P([x1,y2-sz*1.6,x2-sz*.3,y2])};font-size:calc(${sz}*var(--u))">${stampText(TIMES[r])}</div>`:'';
     return `<img class="sig" style="${P(S[r])}" src="${esc(sigs[r])}">${t}`}
   return r===hl?`<div class="slot" style="${P(S[r])}">${ROLES[r]}</div>`:''}).join('');
 const wrap=(bg,inner)=>`<div class="paper" style="aspect-ratio:${F.W}/${F.H};--u:calc(100cqw/${F.W});--pw:${F.pw};--ph:${F.ph}">${bg?`<img class="bg" src="${esc(bg)}">`:''}${inner}</div>`;
