@@ -90,6 +90,12 @@ const FORMS={
     est:{label:'廠商估價單',required:true},stamp:10,
     roles:{contact:'專項聯絡人',coworker:'同工',repair:'修繕組弟兄',finance:'財務監督弟兄'},
     slot:{contact:[686,311,821,343],coworker:[686,345,821,377],repair:[279,867,481,948],finance:[631,867,821,948]}},
+  budget:{kind:'budget',auth:false,name:'預算單',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'title',titleLabel:'預算單名稱',suffix:' 預算單簽名',
+    est:{label:'明細附件（選填）',required:false},stamp:20,
+    roles:{contact:'專項聯絡人',supervisor:'專項監督'},
+    slot:{contact:[644,1239,956,1306],supervisor:[1184,1239,1496,1306]}, // 線上填寫版面
+    slotUp:{contact:[966,811,1104,892],supervisor:[1273,811,1412,892]}, // 上傳 2027 上半年大專預算 PDF 第一頁時的位置
+    hint(f){const t=f.total;return t?`預算合計 NT$ ${t}`:''}},
   huang:{kind:'huang',auth:false,name:'支出結報單（黃單）',W:2000,H:1414,pw:'297mm',ph:'210mm',page:'A4 landscape',title:'purpose',titleLabel:'用途',suffix:'結報申請',
     est:{label:'單據／發票（選填）',required:false},stamp:24,
     first:'handler1', // 發起者只能簽這一格
@@ -170,14 +176,47 @@ async function toImageBlob(file){
 // 簽名日期時間，例如 11.18 2123（台北時間）
 const stampText=iso=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(iso)).map(x=>[x.type,x.value]));return `${p.month}.${p.day} ${p.hour}${p.minute}`};
 let TIMES={};
-const sigLayer=(sigs,hl)=>Object.keys(ROLES).map(r=>{
+const sigLayer=(sigs,hl,S=SLOT)=>Object.keys(ROLES).map(r=>{
   if(sigs[r]){
-    const [x1,,x2,y2]=SLOT[r],sz=F.stamp,t=TIMES[r]?`<div class="stamp" style="${P([x1,y2-sz*1.6,x2-sz*.3,y2])};font-size:calc(${sz}*var(--u))">${stampText(TIMES[r])}</div>`:'';
-    return `<img class="sig" style="${P(SLOT[r])}" src="${esc(sigs[r])}">${t}`}
-  return r===hl?`<div class="slot" style="${P(SLOT[r])}">${ROLES[r]}</div>`:''}).join('');
+    const [x1,,x2,y2]=S[r],sz=F.stamp,t=TIMES[r]?`<div class="stamp" style="${P([x1,y2-sz*1.6,x2-sz*.3,y2])};font-size:calc(${sz}*var(--u))">${stampText(TIMES[r])}</div>`:'';
+    return `<img class="sig" style="${P(S[r])}" src="${esc(sigs[r])}">${t}`}
+  return r===hl?`<div class="slot" style="${P(S[r])}">${ROLES[r]}</div>`:''}).join('');
 const wrap=(bg,inner)=>`<div class="paper" style="aspect-ratio:${F.W}/${F.H};--u:calc(100cqw/${F.W});--pw:${F.pw};--ph:${F.ph}">${bg?`<img class="bg" src="${esc(bg)}">`:''}${inner}</div>`;
 // opts: {edit, bg(url), form, sigs, hl(要顯示虛線框的身份)}
-const paper=o=>(F.kind==='huang'?huangPaper:repairPaper)(o||{});
+const paper=o=>({repair:repairPaper,huang:huangPaper,budget:budgetPaper}[F.kind])(o||{});
+const BCOLS=[['code',170,275,'center'],['date',275,400,'center'],['name',400,860,'left'],['fee',860,1010,'right'],['sub',1010,1160,'right'],['ppl',1160,1280,'center'],['times',1280,1380,'center'],['amt',1380,1540,'right'],['note',1540,1900,'left']];
+const BN=18;
+const rowsOk=f=>Array.from({length:BN},(_,i)=>i).some(i=>(f[`r${i}_name`]||'').trim()&&(f[`r${i}_amt`]||'').trim());
+// 預算單：上傳模式只疊簽名；線上填寫模式整張自己畫（18 列，金額＝召會補助×人數×次數，可手改）
+function budgetPaper({edit=false,bg='',form={},sigs={},hl=''}={}){
+  if(bg)return wrap(bg,sigLayer(sigs,hl,F.slotUp));
+  const ro=edit?'':'readonly',Y0=285,RH=50;
+  const inp=(k,a,b,c,d,al='left',css='')=>`<input type="text" data-k="${k}" style="${P([a,b,c,d])};font-size:calc(24*var(--u));text-align:${al};${css}" value="${esc(form[k])}" ${ro}>`;
+  const T=(x,y,t,s=26,an='middle')=>`<text x="${x}" y="${y}" font-size="${s}" text-anchor="${an}">${t}</text>`;
+  const head=[['項次',100,170],['預算編碼',170,275],['日期',275,400],['摘要',400,860],['報名費',860,1010],['召會補助',1010,1160],['人數',1160,1280],['次數',1280,1380],['金額',1380,1540],['備註',1540,1900]];
+  const rows=Array.from({length:BN},(_,i)=>i);
+  const svg=`<svg viewBox="0 0 2000 1414" fill="#000"><g fill="none" stroke="#000" stroke-width="3"><rect x="100" y="100" width="1800" height="1210"/>
+    <path d="M100 160H1900M100 225H1900M100 285H1900M100 1185H1900M100 1235H1900${rows.map(i=>`M100 ${Y0+(i+1)*RH}H1900`).join('')}M170 225V1185M275 225V1185M400 225V1185M860 225V1185M1010 225V1185M1160 225V1185M1280 225V1185M1380 225V1185M1540 225V1185M420 1235V1310M640 1235V1310M960 1235V1310M1180 1235V1310M1500 1235V1310"/></g>
+    ${T(1000,143,'財團法人台灣省台中市召會',34)}${head.map(([t,a,b])=>T((a+b)/2,262,t,24)).join('')}
+    ${rows.map(i=>T(135,Y0+i*RH+34,i+1,22)).join('')}
+    ${T(410,1219,'合計',26,'start')}${T(120,1280,'日期',26,'start')}${T(440,1280,'專項聯絡人簽名',26,'start')}${T(980,1280,'專項監督簽名',26,'start')}</svg>`;
+  const cells=rows.map(i=>BCOLS.map(([c,a,b,al])=>inp(`r${i}_${c}`,a+3,Y0+i*RH+3,b-3,Y0+(i+1)*RH-3,al)).join('')).join('');
+  return wrap('',svg
+    +`<input type="text" data-k="title" placeholder="例：2027年上半年大專組財務預算表" style="${P([100,162,1900,223])};font-size:calc(36*var(--u));text-align:center" value="${esc(form.title)}" ${ro}>`
+    +cells+inp('total',1380,1187,1540,1233,'right','font-weight:700;background:transparent').replace(/\sreadonly/g,'').replace('<input ','<input readonly ')
+    +inp('dt',200,1240,418,1305,'center')+sigLayer(sigs,hl));
+}
+// 預算單線上填寫：自動算金額與合計，並預設今天日期
+function bindBudget(){
+  const q=k=>document.querySelector(`[data-k="${k}"]`),n=v=>parseFloat(String(v||'').replace(/,/g,''))||0,f=v=>v.toLocaleString('en-US');
+  const tot=()=>{let t=0;for(let i=0;i<BN;i++)t+=n(q(`r${i}_amt`).value);q('total').value=t?f(t):''};
+  document.querySelectorAll('.paper [data-k^="r"]').forEach(e=>e.oninput=()=>{
+    const m=e.dataset.k.match(/^r(\d+)_(sub|ppl|times)$/);
+    if(m){const i=m[1],s=n(q(`r${i}_sub`).value),p=n(q(`r${i}_ppl`).value);if(s&&p)q(`r${i}_amt`).value=f(s*p*(n(q(`r${i}_times`).value)||1))}
+    tot()});
+  if(!q('dt').value){const d=new Date(),z=x=>String(x).padStart(2,'0');q('dt').value=`${d.getFullYear()}/${z(d.getMonth()+1)}/${z(d.getDate())}`}
+  tot();
+}
 
 function repairPaper({edit=false,bg='',form={},sigs={},hl=''}={}){
   const ro=edit?'':'readonly',dis=edit?'':'disabled';
@@ -258,7 +297,7 @@ function menu(){
   const items=[
     ['🔧','修繕器材採購申請單','弟兄姊妹之家、會所的修繕與器材採購。附廠商估價單，由專項聯絡人、同工、修繕組、財務監督簽名（LINE 登入驗證身份）。','?f=repair'],
     ['🧾','支出結報單（黃單）','支出結報。發起者填寫全部欄位並簽「經手人（一）」，其餘由經手人（二）、區負責、長老/負責弟兄、財務監督、會計、出納自己選身份簽名（不驗證）。','?f=huang'],
-    ['📊','預算單','敬請期待。','']];
+    ['📊','預算單','各組財務預算表。由專項聯絡人、專項監督簽名；可上傳預算 PDF（含各大區明細），簽名貼在第一頁（不驗證身份）。','?f=budget']];
   $('#app').innerHTML=`<div class="hero"><small>財團法人台灣省台中市召會</small><h1>各項簽名單據</h1><p>選擇要產生的表單，建立後只要傳<b>一條連結</b>給簽名人。簽名會自動貼到表單上。修繕單的簽名人要用 <b>LINE</b> 登入確認身份；黃單和預算單不驗證身份，簽名人自己選身份即可。</p></div>
     <div class="steps"><div><b>①</b> 選表單</div><div><b>②</b> 填寫／上傳</div><div><b>③</b> 傳一條連結</div><div><b>④</b> 簽名人簽名</div><div><b>⑤</b> 列印 PDF</div></div>`
     +items.map(([i,n,d,h])=>h
@@ -308,7 +347,7 @@ async function create(){
       <div id="el">${estFiles.map(f=>esc(f.name)).join('、')}</div></div>
     <div class="card"><button id="go">建立並產生簽名連結</button> <span class="msg" id="err"></span></div>`;
     $('#m1').onclick=()=>{mode='fill';redraw()};$('#m2').onclick=()=>{mode='upload';redraw()};
-    if(mode==='fill')$('#pv').innerHTML=paper({edit:true,form:saved});
+    if(mode==='fill'){$('#pv').innerHTML=paper({edit:true,form:saved});if(F.kind==='budget')bindBudget()}
     if(mode==='upload'&&bgFile)$('#pv').innerHTML=paper({edit:true,form:saved,bg:window.URL.createObjectURL(bgFile.prev)});
     if(F.first)getSig=sigPad($('#pad1'),$('#clr1'));
     if($('#subj'))$('#subj').oninput=e=>subj=e.target.value;
@@ -327,9 +366,15 @@ async function create(){
           }else if(!(form.purpose||'').trim())throw Error('請填寫「用途」（做為連結標題）');
           if(!getSig())throw Error('請先在「經手人（一）」簽名');
         }
+        if(F.kind==='budget'){
+          if(!(form.title||'').trim())throw Error('請填寫預算單名稱');
+          if(mode==='fill'&&!rowsOk(form))throw Error('至少要填一列「摘要」與「金額」');
+        }
         if(F.est.required&&!estFiles.length)throw Error('請至少上傳一份'+F.est.label);
         const bgUrl=mode==='upload'?await upload(bgFile.prev,bgFile.prev.type==='image/jpeg'?'jpg':ext(bgFile.src.name)):null;
         const files=[];for(const o of estFiles){const f=await fromHeic(o);files.push({name:f.name,url:await upload(f,ext(f.name))})}
+        // 預算單上傳 PDF：把完整檔案（含明細頁）也附上，簽名人可看全部頁面
+        if(F.kind==='budget'&&mode==='upload'&&/\.pdf$/i.test(bgFile.src.name))files.push({name:bgFile.src.name,url:await upload(bgFile.src,'pdf')});
         const id=await rpc('rp_create',{p_form:form,p_bg:bgUrl,p_files:files,p_assign:getAsg(),p_img:F.first?getSig():null,p_token:TOKEN||null});
         location.search='?id='+id;
       }catch(x){$('#err').textContent=x.message;b.disabled=false}
